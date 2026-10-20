@@ -12,7 +12,7 @@ function Report($state,$message,$extra=@{}) {
     [IO.File]::WriteAllText($temp,($record|ConvertTo-Json -Depth 6),[Text.Encoding]::UTF8)
     Move-Item -LiteralPath $temp -Destination $statusFile -Force
 }
-function Run-Tool($exe,$arguments) {
+function Run-Tool($exe,$arguments,[int]$TimeoutSeconds=14400) {
     $psi = New-Object Diagnostics.ProcessStartInfo
     $psi.FileName=$exe; $psi.UseShellExecute=$false; $psi.CreateNoWindow=$true
     $psi.WorkingDirectory=$jobDir
@@ -22,7 +22,8 @@ function Run-Tool($exe,$arguments) {
     $outTask=$p.StandardOutput.ReadToEndAsync(); $errTask=$p.StandardError.ReadToEndAsync()
     $watch=[Diagnostics.Stopwatch]::StartNew()
     while(-not $p.WaitForExit(300)) {
-        if((Test-Path -LiteralPath (Join-Path $jobDir 'cancel')) -or $watch.Elapsed.TotalHours -gt 4){$p.Kill();throw 'Operacao cancelada ou tempo limite excedido.'}
+        if(Test-Path -LiteralPath (Join-Path $jobDir 'cancel')){$p.Kill();throw 'Operacao cancelada.'}
+        if($watch.Elapsed.TotalSeconds -gt $TimeoutSeconds){$p.Kill();throw ('Tempo limite de '+$TimeoutSeconds+' segundos excedido. Verifique a conexao e tente novamente.')}
     }
     $out=$outTask.Result; $err=$errTask.Result
     if($p.ExitCode -ne 0){throw "Ferramenta terminou com codigo $($p.ExitCode). Verifique conexao e autenticacao no Telegram."}
@@ -61,8 +62,8 @@ try {
     $chat=$parts[0]; $mid=[int]$parts[-1]
     if($chat -eq 'c'){ $chat='-100'+$parts[1] }
     $metaFile=Join-Path $jobDir 'metadata.json'
-    Report 'running' 'Consultando a versao disponivel...'
-    [void](Run-Tool $req.tdl @('--storage',$storage,'chat','export','-c',$chat,'-T','id','-i',"$mid",'--all','--with-content','-o',$metaFile))
+    Report 'running' 'Consultando somente o post do jogo no Telegram...'
+    [void](Run-Tool $req.tdl (Get-ArquivistaMetadataArguments $req.link $storage $metaFile) 45)
     $meta=Read-CentralJson $metaFile
     $versionInfo=Get-ArquivistaMessageVersion $meta $req.link
     $version=$versionInfo.version;$author=$versionInfo.author

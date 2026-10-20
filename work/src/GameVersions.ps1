@@ -14,6 +14,26 @@ function Get-ArquivistaMessageVersion($Metadata,[string]$Link) {
     [pscustomobject]@{version=$version;author=$author;messageId=$target;source='arquivista-message'}
 }
 
+function Get-ArquivistaPostReference([string]$Link) {
+    $uri=$null
+    if(-not [Uri]::TryCreate($Link,[UriKind]::Absolute,[ref]$uri) -or $uri.Scheme -ne 'https' -or $uri.Host -ne 't.me'){throw 'Fonte de versao invalida.'}
+    $parts=$uri.AbsolutePath.Trim('/').Split('/')
+    [long]$target=0
+    if($parts.Length -lt 2 -or -not [long]::TryParse($parts[-1],[ref]$target) -or $target -lt 1 -or $target -gt [int]::MaxValue){throw 'Identificador do post invalido.'}
+    $chat=$parts[0]
+    if($chat -eq 'c'){
+        if($parts.Length -lt 3 -or $parts[1] -notmatch '^\d+$'){throw 'Canal privado invalido.'}
+        $chat='-100'+$parts[1]
+    }
+    [pscustomobject]@{messageId=[string]$target;chat=$chat;lower=[Math]::Max([long]1,$target-1);upper=$target+1}
+}
+
+function Get-ArquivistaMetadataArguments([string]$Link,[string]$Storage,[string]$Output) {
+    $post=Get-ArquivistaPostReference $Link
+    # Um unico limite em tdl -T id consulta ate o fim do historico.
+    @('--storage',$Storage,'--reconnect-timeout','15s','chat','export','-c',$post.chat,'-T','id','-i',($post.lower.ToString()+','+$post.upper.ToString()),'--all','--with-content','-o',$Output)
+}
+
 function Read-ArquivistaAcervoVersions([string]$Root) {
     $result=@{};$times=@{}
     foreach($relative in 'Arquivismo\Dados\verificacao_acervo.json','Arquivismo\Cache\verificacao_jogos.json'){

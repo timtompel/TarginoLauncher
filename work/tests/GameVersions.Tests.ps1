@@ -6,6 +6,13 @@ function Assert($value,$message){if(-not $value){throw $message}}
 function Reject([scriptblock]$action){$failed=$false;try{& $action|Out-Null}catch{$failed=$true};Assert $failed 'Metadado incorreto aceito.'}
 $meta=[pscustomobject]@{messages=@([pscustomobject]@{id=999;text="Versao`nmstan - 0.1.0"},[pscustomobject]@{id=705;text="Versão`nmstan - 0.0.5-alpha"})}
 $link='https://t.me/CentralArquivista/686/705'
+$exportArgs=Get-ArquivistaMetadataArguments $link 'type=file,path=fixture' 'metadata.json'
+$index=[Array]::IndexOf($exportArgs,'-i')
+Assert ($exportArgs[$index+1] -eq '704,706') 'Consulta voltou a exportar todo o historico.'
+$first=Get-ArquivistaPostReference 'https://t.me/Canal/1'
+Assert ($first.lower -eq 1 -and $first.upper -eq 2) 'Limite inicial incorreto.'
+$private=Get-ArquivistaPostReference 'https://t.me/c/12345/705'
+Assert ($private.chat -eq '-10012345' -and $private.messageId -eq '705') 'Referencia privada incorreta.'
 $v=Get-ArquivistaMessageVersion $meta $link
 Assert ($v.version -eq '0.0.5-alpha' -and $v.messageId -eq '705') 'Pegou versao de outro post.'
 Reject {Get-ArquivistaMessageVersion $meta 'https://t.me/Canal/123'}

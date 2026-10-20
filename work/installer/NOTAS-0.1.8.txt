@@ -1,0 +1,7 @@
+TarginoLauncher 0.1.8
+
+- Consulta de versao limitada ao post do jogo e mensagens imediatamente vizinhas, sem percorrer todo o historico do canal.
+- Mantem a validacao do ID exato para nao confundir versoes de jogos diferentes.
+- Consulta tem limite de 45 segundos e reconexao de 15 segundos; downloads mantem seus limites separados.
+- Testes impedem regressao para consulta sem limite superior.
+- Jogos, saves e registros preservados.

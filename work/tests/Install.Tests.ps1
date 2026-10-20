@@ -7,7 +7,7 @@ using System;
 using System.IO;
 public class FixtureTool {
  public static void Main(string[] args) {
-  if(Array.IndexOf(args,"export")>=0){File.WriteAllText(args[Array.IndexOf(args,"-o")+1],"{\"messages\":[{\"id\":999,\"text\":\"Versao\\nOutro jogo - 9.9.9\"},{\"id\":123,\"text\":\"Versao\\nFixture - 1.2.3\"}]}");return;}
+  if(Array.IndexOf(args,"export")>=0){if(args[Array.IndexOf(args,"-i")+1]!="122,124")throw new Exception("Consulta sem intervalo restrito");File.WriteAllText(args[Array.IndexOf(args,"-o")+1],"{\"messages\":[{\"id\":999,\"text\":\"Versao\\nOutro jogo - 9.9.9\"},{\"id\":123,\"text\":\"Versao\\nFixture - 1.2.3\"}]}");return;}
   if(Array.IndexOf(args,"dl")>=0){string d=args[Array.IndexOf(args,"-d")+1];Directory.CreateDirectory(d);File.WriteAllText(Path.Combine(d,"fixture.rar"),"fixture");return;}
   if(args[0]=="lb"){Console.WriteLine(File.Exists("unsafe") ? "../escape.exe" : "Game.exe\nsettings.ini");return;}
   if(args[0]=="x"){string d=args[args.Length-1];Directory.CreateDirectory(d);File.WriteAllText(Path.Combine(d,"Game.exe"),"new binary");File.WriteAllText(Path.Combine(d,"settings.ini"),"package settings");return;}
