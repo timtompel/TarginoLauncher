@@ -1,5 +1,9 @@
 param([Parameter(Mandatory)][string]$SetupPath)
 $ErrorActionPreference='Stop'
+[void][Reflection.Assembly]::LoadFile([IO.Path]::GetFullPath($SetupPath))
+[Setup]::ValidateFreeSpace(4096,2048)
+$blockedLowSpace=$false;try{[Setup]::ValidateFreeSpace(1024,2048)}catch{$blockedLowSpace=$true}
+if(-not $blockedLowSpace){throw 'Verificacao de espaco insuficiente falhou.'}
 $workspace=Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 $testRoot=Join-Path $workspace ('work\installation-test-'+[Guid]::NewGuid().ToString('N'))
 $target=Join-Path $testRoot 'Instalacao limpa'
