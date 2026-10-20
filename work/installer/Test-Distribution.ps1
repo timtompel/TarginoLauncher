@@ -5,13 +5,18 @@ $ErrorActionPreference='Stop'
 $blockedLowSpace=$false;try{[Setup]::ValidateFreeSpace(1024,2048)}catch{$blockedLowSpace=$true}
 if(-not $blockedLowSpace){throw 'Verificacao de espaco insuficiente falhou.'}
 $workspace=Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
-$testRoot=Join-Path $workspace ('work\installation-test-'+[Guid]::NewGuid().ToString('N'))
+$testRoot=Join-Path ([IO.Path]::GetTempPath()) ('TarginoDistTest-'+[Guid]::NewGuid().ToString('N'))
 $target=Join-Path $testRoot 'Instalacao limpa'
+New-Item -ItemType Directory -Path $testRoot -Force|Out-Null
 function Install-Fixture([string]$Folder,[int]$ExpectedExit=0){
-    $process=Start-Process -FilePath $SetupPath -ArgumentList ('--test-install "'+$Folder+'"') -WindowStyle Hidden -Wait -PassThru
-    if($process.ExitCode -ne $ExpectedExit){throw ('Instalador retornou '+$process.ExitCode+'; esperado '+$ExpectedExit)}
+    $errorLog=Join-Path $testRoot ('installer-'+[Guid]::NewGuid().ToString('N')+'.stderr')
+    $process=Start-Process -FilePath $SetupPath -ArgumentList ('--test-install "'+$Folder+'"') -WindowStyle Hidden -Wait -PassThru -RedirectStandardError $errorLog
+    if($process.ExitCode -ne $ExpectedExit){throw ('Instalador retornou '+$process.ExitCode+'; esperado '+$ExpectedExit+'; destino '+$Folder+'; detalhe: '+[IO.File]::ReadAllText($errorLog))}
 }
 Install-Fixture $target
+$tooDeep=Join-Path $testRoot ('profunda-'+('x'*110))
+Install-Fixture $tooDeep 1
+if(Test-Path -LiteralPath $tooDeep){throw 'Criou destino profundo antes de validar caminhos.'}
 if(-not(Test-Path -LiteralPath (Join-Path $target 'TarginoLauncher-Recompilados.exe'))){throw 'Entrada executavel ausente'}
 & powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File (Join-Path $target 'src\CentralArquivista.ps1') -VerifyClean
 if($LASTEXITCODE){throw 'Interface limpa falhou'}

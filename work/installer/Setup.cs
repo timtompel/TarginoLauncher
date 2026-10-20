@@ -85,6 +85,12 @@ public class Setup : Form {
     using(var sha=SHA256.Create())using(var input=File.OpenRead(Path.Combine(stage,rel))){string got=BitConverter.ToString(sha.ComputeHash(input)).Replace("-","");if(!got.Equals(hash,StringComparison.OrdinalIgnoreCase))throw new IOException("Integridade invalida: "+rel);}
    }
    if(verified.Count!=files.Count-1)throw new IOException("Manifesto incompleto.");
+   // O .NET Framework/PowerShell usados pelo launcher nao garantem caminhos longos.
+   // Verificar tambem o caminho do backup ANTES de substituir qualquer arquivo.
+   foreach(string rel in files){
+    string output=Path.Combine(target,rel),bak=Path.Combine(backup,rel);
+    if(output.Length>=260||bak.Length>=260||Path.GetDirectoryName(output).Length>=248||Path.GetDirectoryName(bak).Length>=248)throw new IOException("Pasta muito profunda para instalacao e backup. Escolha um caminho mais curto. Nenhum arquivo do launcher foi substituido.");
+   }
    long required=8L*1024*1024;
    foreach(string rel in files){required+=new FileInfo(Path.Combine(stage,rel)).Length;string previous=Path.Combine(target,rel);if(File.Exists(previous))required+=new FileInfo(previous).Length;}
    ValidateFreeSpace(new DriveInfo(Path.GetPathRoot(target)).AvailableFreeSpace,required);

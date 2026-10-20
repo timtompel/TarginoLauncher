@@ -1,0 +1,8 @@
+TarginoLauncher 0.1.6
+
+- Instalador valida caminhos dos arquivos e backups antes de modificar a instalacao, prevenindo falhas em pastas profundas no .NET Framework.
+- Testes do instalador e ciclo usam pasta temporaria curta e cobrem rejeicao preventiva de caminho longo.
+- Mantem todas as correcoes de portabilidade e confiabilidade da 0.1.5.
+- Manual em PDF atualizado para a versao 0.1.6.
+- README, manual e Sobre esclarecem que o launcher cria biblioteca propria para os jogos baixados por ele, separada do Central original.
+- Jogos, saves, dados e backups preservados.

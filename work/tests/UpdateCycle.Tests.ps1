@@ -1,6 +1,6 @@
 param([Parameter(Mandatory)][string]$SetupPath)
 $ErrorActionPreference='Stop'
-$fixture=Join-Path $PSScriptRoot ('cycle-fixture-'+[Guid]::NewGuid().ToString('N'));$root=Join-Path $fixture 'Launcher limpo'
+$fixture=Join-Path ([IO.Path]::GetTempPath()) ('TarginoCycle-'+[Guid]::NewGuid().ToString('N'));$root=Join-Path $fixture 'Launcher limpo'
 function Install-Test {param([string]$Arguments) $p=Start-Process -FilePath $SetupPath -ArgumentList $Arguments -WindowStyle Hidden -PassThru -Wait;if($p.ExitCode){throw ('Ciclo retornou '+$p.ExitCode)}}
 Install-Test ('--test-install "'+$root+'"')
 foreach($name in 'Dados','Cache','Biblioteca'){New-Item -ItemType Directory -Path (Join-Path $root $name) -Force|Out-Null;[IO.File]::WriteAllText((Join-Path $root ($name+'\preservar.fixture')),'conteudo mantido')}

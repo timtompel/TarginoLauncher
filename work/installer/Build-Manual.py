@@ -1,5 +1,6 @@
 """Manual do usuário, sem dados pessoais ou capturas da biblioteca local."""
 from pathlib import Path
+import json
 from xml.sax.saxutils import escape
 from reportlab.pdfgen import canvas
 from reportlab.lib.colors import HexColor, white
@@ -13,6 +14,7 @@ from pypdf import PdfReader
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / 'output' / 'pdf' / 'Manual-TarginoLauncher-Central-Arquivista.pdf'
 OUT.parent.mkdir(parents=True, exist_ok=True)
+VERSION = json.loads((ROOT / 'work' / 'project.json').read_text(encoding='utf-8-sig'))['version']
 pdfmetrics.registerFont(TTFont('Segoe', 'C:/Windows/Fonts/segoeui.ttf'))
 pdfmetrics.registerFont(TTFont('SegoeBold', 'C:/Windows/Fonts/segoeuib.ttf'))
 pdfmetrics.registerFontFamily('Segoe', normal='Segoe', bold='SegoeBold')
@@ -65,7 +67,7 @@ def start(title, subtitle):
     c.setFillColor(NAVY); c.rect(0, H-71, W, 71, fill=1, stroke=0)
     c.setFont('SegoeBold', 12); c.setFillColor(white)
     c.drawString(50, H-35, 'TarginoLauncher-Central Arquivista')
-    c.setFont('Segoe', 9); c.drawString(50, H-53, 'MANUAL DO USUÁRIO | versão de referência 0.1.5')
+    c.setFont('Segoe', 9); c.drawString(50, H-53, f'MANUAL DO USUÁRIO | versão de referência {VERSION}')
     c.setFillColor(INK); c.setFont('SegoeBold', 24); c.drawString(50, H-116, title)
     c.setFont('Segoe', 11); c.setFillColor(MUTED); c.drawString(50, H-138, subtitle)
     y = H - 173
@@ -84,8 +86,9 @@ c.drawImage(image, 50, y-height, width=W-100, height=height, mask='auto')
 y -= height + 25
 para('<b>Uma interface comunitária para organizar seus jogos recompilados no PC.</b> Navegue por plataformas, use teclado ou controle e acompanhe instalações e atualizações em um só lugar.')
 note('O que este instalador entrega?', 'Somente o frontend TarginoLauncher. Ele não inclui jogos, contas, catálogo pessoal nem o programa original do Central Arquivista. Conecte sua biblioteca existente no primeiro uso.')
+para('<b>Biblioteca própria:</b> o launcher cria a pasta <b>Biblioteca</b> para os jogos baixados por ele, separada da instalação original. Ela começa sem jogos; o catálogo e as ferramentas vêm da base conectada.', kind=small)
 para('Desenvolvimento da interface: <b>Targino Social Media</b>.<br/>Créditos do programa e da base original: <b>projeto Central Arquivista</b>.', kind=small)
-para('Edição: 20/10/2026. Guia baseado na versão 0.1.5. O projeto continua em desenvolvimento; nomes e posições podem mudar em versões futuras.', kind=small)
+para(f'Edição: 20/10/2026. Guia baseado na versão {VERSION}. O projeto continua em desenvolvimento; nomes e posições podem mudar em versões futuras.', kind=small)
 
 start('01. Instalação', 'Comece em uma pasta separada do programa original.')
 heading('Antes de começar')
@@ -95,12 +98,14 @@ heading('Passo a passo')
 para('<b>1.</b> Acesse <link href="https://github.com/timtompel/TarginoLauncher/releases/latest" color="#168c34">a release mais recente no GitHub</link>. Em Assets, baixe o arquivo terminado em <b>Setup.exe</b>.')
 para('<b>2.</b> Execute o instalador e escolha uma pasta só para o launcher. Não instale dentro da pasta que contém o Central Arquivista original.')
 para('<b>3.</b> Conclua a instalação e escolha abrir o launcher. Use o executável ou o atalho com o avatar Targino.')
+para('Prefira uma pasta com caminho curto. O instalador verifica se há espaço para os arquivos e para o backup, e recusa caminhos profundos demais antes de substituir o programa.', kind=small)
 para('<b>4.</b> Em <b>Configurações &gt; Escolher biblioteca</b>, selecione a raiz da biblioteca original: a pasta que contém <b>Arquivismo</b> e <b>Jogos</b>. Não selecione apenas Dados ou uma pasta de jogo.')
 para('<b>5.</b> Volte à biblioteca, escolha uma plataforma e entre nos jogos. A opção <b>Recarregar catálogo</b> atualiza a lista quando necessário.')
 note('Biblioteca vazia?', 'Uma instalação nova não carrega automaticamente os arquivos pessoais de quem desenvolveu o launcher. Confira a pasta selecionada e se o catálogo existe na biblioteca original.')
 
 start('02. Biblioteca e jogos', 'Entenda a diferença entre disponível e instalado.')
 heading('Plataformas e pesquisa')
+para('O launcher cria sua própria biblioteca de instalações na pasta <b>Biblioteca</b>. Os jogos que ele baixa ficam nessa pasta, separados do Central original. Conectar uma base não copia automaticamente todos os jogos existentes para essa biblioteca.')
 para('Na tela inicial, selecione o logo de uma plataforma. A próxima tela mostra os jogos e a ficha à direita. Use <b>Todas as plataformas</b> para consultar o conjunto completo. A busca filtra os títulos; Esc/B volta à tela de plataformas.')
 heading('O botão principal')
 para('<b>Jogar:</b> o launcher encontrou o executável da instalação. Ao confirmar, ele inicia o jogo com a pasta de trabalho correspondente.')

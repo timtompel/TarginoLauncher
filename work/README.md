@@ -1,6 +1,7 @@
 # Desenvolvimento do TarginoLauncher
 
 Interface comunitária independente para bibliotecas do Central Arquivista. Não inclui jogos, credenciais ou o programa original.
+O launcher cria uma biblioteca própria de instalações em Biblioteca, separada do Central original. Os jogos baixados pelo frontend ficam nessa pasta; conectar uma base não copia automaticamente os jogos existentes.
 
 ## Organização
 

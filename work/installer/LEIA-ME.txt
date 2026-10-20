@@ -4,6 +4,7 @@ PRIMEIRO USO
 Instale em pasta própria, fora da pasta do Central original.
 Abra Configurações > Escolher biblioteca e selecione a raiz que contém Arquivismo e Jogos.
 O instalador não contém jogos, contas ou o programa original.
+O launcher cria uma biblioteca própria na pasta Biblioteca para os jogos baixados por ele, separada do Central original. Ela começa sem jogos e utiliza o catálogo e as ferramentas da base conectada.
 Para downloads compatíveis, configure sua própria conta em Conectar Telegram.
 
 ATUALIZAÇÃO
