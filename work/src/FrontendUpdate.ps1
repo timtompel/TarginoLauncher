@@ -1,4 +1,5 @@
 # Atualizacao exclusiva do frontend. Sem tokens ou escrita na biblioteca/base.
+. (Join-Path $PSScriptRoot 'Hashing.ps1')
 function Read-FrontendStatus([string]$Path){
     $stream=$null;$reader=$null
     try{
@@ -44,7 +45,7 @@ function Read-FrontendSignedManifest([string]$EnvelopePath,[string]$PublicKeyPat
 }
 function Assert-FrontendPackage([string]$Path,$Manifest){
     $file=Get-Item -LiteralPath $Path
-    if($file.Length -ne $Manifest.size -or (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash -ine $Manifest.sha256){throw 'Pacote incompleto ou adulterado. Instalacao bloqueada.'}
+    if($file.Length -ne $Manifest.size -or (Get-TarginoFileSHA256 $Path) -ine $Manifest.sha256){throw 'Pacote incompleto ou adulterado. Instalacao bloqueada.'}
 }
 function Receive-FrontendFile([string]$Url,[string]$Destination,[long]$Limit,[scriptblock]$Progress,[string]$CancelPath){
     if($CancelPath -and [IO.File]::Exists($CancelPath)){throw [OperationCanceledException]::new('Atualizacao cancelada pelo usuario.')}

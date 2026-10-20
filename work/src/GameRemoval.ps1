@@ -11,6 +11,7 @@ function Assert-RemovalTree([string]$Path) {
         }
     }
 }
+. (Join-Path $PSScriptRoot 'Hashing.ps1')
 function Get-GameRemovalPlan($Game,[string]$AppRoot) {
     $id=[string]$Game.id
     if($id -notmatch '^[a-z0-9][a-z0-9-]{0,159}$'){throw 'Identificador de jogo invalido.'}
@@ -55,7 +56,7 @@ function Remove-ManagedGame($Game,[string]$AppRoot,[bool]$PreserveSaves=$true,[s
             $output=Resolve-CatalogPath $saveBackup $relative
             New-Item -ItemType Directory -Force -Path (Split-Path $output -Parent)|Out-Null
             Copy-Item -LiteralPath $file.FullName -Destination $output
-            if((Get-FileHash -LiteralPath $file.FullName).Hash -ne (Get-FileHash -LiteralPath $output).Hash){throw 'Backup de saves nao conferiu. Nada foi removido.'}
+            if((Get-TarginoFileSHA256 $file.FullName) -ne (Get-TarginoFileSHA256 $output)){throw 'Backup de saves nao conferiu. Nada foi removido.'}
         }
     }
     # Revalida o alvo exato imediatamente antes de enviar a Lixeira.

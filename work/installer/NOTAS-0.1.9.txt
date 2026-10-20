@@ -1,0 +1,7 @@
+TarginoLauncher 0.1.9
+
+- Validacao SHA256 do atualizador usa criptografia nativa do .NET, sem depender do comando Get-FileHash.
+- Aplica a mesma protecao na verificacao de backup de saves da desinstalacao.
+- Assinatura, hash, tamanho e origem continuam obrigatorios. Pacotes adulterados permanecem bloqueados.
+- Teste simula Get-FileHash indisponivel e confere vetores SHA256 conhecidos, adulteracao e liberacao dos arquivos.
+- Jogos e saves preservados.
