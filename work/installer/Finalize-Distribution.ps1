@@ -9,7 +9,8 @@ foreach($folder in 'src','installer','distribution-assets'){Copy-Item -LiteralPa
 foreach($name in 'project.json','README.md','catalog.schema.json','Build-AvatarIcon.cjs','Build-PlatformLogos.cjs'){Copy-Item -LiteralPath (Join-Path $workspace ('work\'+$name)) -Destination (Join-Path $kit 'work')}
 New-Item -ItemType Directory -Path (Join-Path $kit 'work\tests')|Out-Null
 Get-ChildItem -LiteralPath (Join-Path $workspace 'work\tests') -File -Filter '*.ps1'|Copy-Item -Destination (Join-Path $kit 'work\tests')
-Copy-Item -LiteralPath (Join-Path $out 'LEIA-ME-DISTRIBUICAO.txt') -Destination (Join-Path $kit 'LEIA-ME.txt')
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'LEIA-ME.txt') -Destination (Join-Path $out 'LEIA-ME-DISTRIBUICAO.txt') -Force
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'LEIA-ME.txt') -Destination (Join-Path $kit 'LEIA-ME.txt')
 Add-Type -AssemblyName System.IO.Compression.FileSystem,System.Windows.Forms,System.Drawing
 $zip=Join-Path $out ('TarginoLauncher-Recompilados-'+$Version+'-Fontes.zip')
 $tempZip=Join-Path $workspace ('work\fontes-'+[Guid]::NewGuid().ToString('N')+'.zip')
