@@ -56,6 +56,9 @@ public class Setup : Form {
   string file=Path.Combine(full,"Dados","launcher.lock");
   if(File.Exists(file)){using(var locked=new FileStream(file,FileMode.Open,FileAccess.ReadWrite,FileShare.None)){} }
  }
+ public static void ValidateFreeSpace(long available,long required){
+  if(available<0||required<0||available<required)throw new IOException("Espaco livre insuficiente para instalar e preservar o backup. Nenhum arquivo do launcher foi substituido.");
+ }
  public static void InstallTo(string target){
   target=Path.GetFullPath(target);CheckDestination(target);
   string stage=Path.Combine(Path.GetTempPath(),"TarginoSetup-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(stage);
@@ -82,6 +85,9 @@ public class Setup : Form {
     using(var sha=SHA256.Create())using(var input=File.OpenRead(Path.Combine(stage,rel))){string got=BitConverter.ToString(sha.ComputeHash(input)).Replace("-","");if(!got.Equals(hash,StringComparison.OrdinalIgnoreCase))throw new IOException("Integridade invalida: "+rel);}
    }
    if(verified.Count!=files.Count-1)throw new IOException("Manifesto incompleto.");
+   long required=8L*1024*1024;
+   foreach(string rel in files){required+=new FileInfo(Path.Combine(stage,rel)).Length;string previous=Path.Combine(target,rel);if(File.Exists(previous))required+=new FileInfo(previous).Length;}
+   ValidateFreeSpace(new DriveInfo(Path.GetPathRoot(target)).AvailableFreeSpace,required);
    Directory.CreateDirectory(target);
    Directory.CreateDirectory(Path.Combine(target,"Dados"));
    installLock=new FileStream(Path.Combine(target,"Dados","launcher.lock"),FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.None);
