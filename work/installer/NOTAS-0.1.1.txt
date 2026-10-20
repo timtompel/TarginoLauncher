@@ -1,0 +1,7 @@
+TarginoLauncher 0.1.1
+
+- Nova opcao Configuracoes > Sobre.
+- Exibe versao instalada e canal de atualizacao.
+- Creditos ao projeto Central Arquivista e identificacao da interface independente.
+- Links para o repositorio do launcher e canal no Telegram.
+- Atualizacao preserva jogos, saves, dados e backups.

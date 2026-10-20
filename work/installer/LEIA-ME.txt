@@ -1,0 +1,52 @@
+TarginoLauncher - Recompilados by Central Arquivista
+
+PRIMEIRO USO
+Instale em pasta própria, fora da pasta do Central original.
+Abra Configurações > Escolher biblioteca e selecione a raiz que contém Arquivismo e Jogos.
+O instalador não contém jogos, contas ou o programa original.
+Para downloads compatíveis, configure sua própria conta em Conectar Telegram.
+
+ATUALIZAÇÃO
+Use Configurações > Verificar / atualizar launcher.
+A versão instalada aparece em Configurações > Sobre.
+O launcher consulta novamente a última release antes de confirmar o download.
+O manifesto RSA-SHA256 e o tamanho/hash do pacote são validados.
+Jogos, saves, Dados, Cache e backups são preservados.
+Há opção de cancelar a operação em Configurações; o cancelamento de uma conexão bloqueada pode aguardar o timeout de rede.
+Se um cliente antigo não conseguir atualizar, instale o setup mais recente na mesma pasta, sem desinstalar.
+A assinatura do manifesto não é um certificado Authenticode do Windows.
+
+PASTA RENOMEADA
+As instalações gerenciadas em Biblioteca são reconectadas com backup quando o caminho antigo deixa de existir.
+Jogos e pastas externas não são movidos. O instalador repara os atalhos ao atualizar.
+Mantenha cópia dos saves importantes.
+
+CONTROLES
+Setas/direcional: navegar. Enter/A/Start: confirmar. Esc/B: voltar.
+D/X: ficha. F: busca. F11: tela cheia.
+Em Configurar controle, clique no campo, solte os botões e pressione o desejado.
+Salve pelo botão da tela. Voltar/Confirmar não executam comandos durante a captura.
+Adaptadores genéricos podem não informar o modelo físico. Fotos são ilustrativas.
+
+JOGOS
+Jogar inicia uma instalação existente. Baixar usa fontes/ferramentas compatíveis da biblioteca.
+A atualização de jogos é separada da atualização do launcher.
+Opções de renderizador dependem do port; não há OpenGL/software universal.
+A atualização da base abre o Central original para seu próprio processo oficial.
+
+DESINSTALAÇÃO
+A opção de remover jogos vem desmarcada. Para preservá-los, não a marque.
+Se marcada, Biblioteca do launcher vai para a Lixeira, incluindo saves dentro dela.
+Jogos externos e o Central original não são removidos.
+Desinstalação individual é limitada aos jogos gerenciados pelo launcher.
+Backups de saves reconhecidos ficam em Dados/Desinstalacoes e não são restaurados automaticamente.
+O desinstalador e o manifesto podem permanecer para permitir reinstalação. Dados e backups são preservados.
+
+CRÉDITOS
+Frontend: Targino Social Media. Base: projeto Central Arquivista.
+Artes e fotos: autores e licenças nos arquivos Recursos/Plataformas/CREDITOS.txt e Recursos/Controles/CREDITOS.txt.
+Nem todos os jogos, drivers, formatos de save e controles foram validados.
+
+CONTATO
+https://github.com/timtompel/TarginoLauncher
+https://t.me/TarginoLauncher

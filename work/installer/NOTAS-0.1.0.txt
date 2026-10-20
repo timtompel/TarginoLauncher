@@ -1,0 +1,10 @@
+TarginoLauncher 0.1.0
+
+- Sinopse removida da lateral e da ficha do jogo.
+- Removidos os comandos de revisao de sinopse e suas consultas automaticas.
+- Mantidas a imagem ilustrativa, versao instalada e informacoes locais de jogadores.
+- Corrigida a identidade do launcher na barra de tarefas para nao agrupar como PowerShell.
+- Correcao do mapeamento: captura de botoes sem acionar Voltar/Confirmar.
+- Atualizacao preserva Biblioteca, Dados, Cache e backups; nao altera o Central original.
+
+Primeira publicacao assinada para o canal de atualizacao do launcher. A validacao em diferentes computadores continua. Executavel sem certificado Authenticode de editor; o pacote e validado pelo manifesto RSA-SHA256.

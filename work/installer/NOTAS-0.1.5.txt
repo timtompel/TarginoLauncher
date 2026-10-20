@@ -1,0 +1,10 @@
+TarginoLauncher 0.1.5
+
+- Reconexao segura de instalacoes gerenciadas apos renomear a pasta do launcher, com backup dos registros.
+- Atualizacao repara atalhos existentes para a pasta atual.
+- Fonte unica de versao em project.json; assemblies e manifesto gerados de forma consistente.
+- XAML consolidado; removidos temas sobrescritos e a infraestrutura de sinopse sem uso.
+- Atualizador permite cancelar consulta/download pelo menu Configuracoes.
+- Instalador arquiva codigo e logos legados em BackupsFrontend; desinstalador limpa pastas vazias e o atalho local reconhecido.
+- Novos testes isolados de renomeacao, falhas de rede, cancelamento e ciclo de atualizacao com reabertura WPF.
+- Jogos, saves, dados e backups preservados. Testes no mesmo Windows nao substituem validacao em outro computador.

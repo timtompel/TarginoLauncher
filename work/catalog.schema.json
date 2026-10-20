@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Central Arquivista catalog",
+  "type": "object",
+  "required": ["schemaVersion", "libraryRoots", "games"],
+  "properties": {
+    "schemaVersion": { "type": "integer", "const": 1 },
+    "libraryRoots": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "games": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "executable", "arguments", "workingDirectory"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$" },
+          "title": { "type": "string", "minLength": 1 },
+          "executable": { "type": "string", "minLength": 1 },
+          "arguments": { "type": "array", "items": { "type": "string" } },
+          "workingDirectory": { "type": "string", "minLength": 1 },
+          "category": { "type": "string" },
+          "platform": { "type": "string", "const": "Windows" },
+          "originalSystem": { "type": "string" },
+          "variant": { "type": "string" },
+          "version": { "type": "string" },
+          "cover": { "type": "string" },
+          "background": { "type": "string" },
+          "screenshot": { "type": "string" },
+          "description": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

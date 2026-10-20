@@ -1,0 +1,6 @@
+TarginoLauncher 0.1.3
+
+- Corrigido avatar borrado na tela Sobre: selecionado o quadro de 256 pixels do icone, em vez de ampliar a miniatura.
+- Aplicada reducao de imagem em alta qualidade, mantendo a proporcao original.
+- Mantidas as correcoes do atualizador da versao 0.1.2.
+- Jogos, saves, dados e backups preservados.

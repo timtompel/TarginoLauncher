@@ -1,0 +1,15 @@
+dist-build-*/
+installation-test-*/
+source-kit-*/
+update-live-check-*/
+tests/*fixture-*/
+Dados/
+Cache/
+Biblioteca/
+BackupsFrontend/
+software-test/
+node_modules/
+*.dpapi
+*private*.xml
+*.log
+*.tmp

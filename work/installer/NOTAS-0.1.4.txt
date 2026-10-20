@@ -1,0 +1,8 @@
+TarginoLauncher 0.1.4
+
+- Ao clicar para instalar uma atualizacao oferecida, o launcher consulta novamente a release mais recente antes da confirmacao e do download.
+- Ofertas antigas em memoria deixam de determinar qual versao sera baixada.
+- A confirmacao mostra a versao e as notas da consulta atual, mantendo assinatura e integridade.
+- Consultas nao reutilizam o cache HTTP local.
+- Uma versao recente pode ser instalada diretamente, sem percorrer versoes intermediarias.
+- Jogos, saves, dados e backups preservados.

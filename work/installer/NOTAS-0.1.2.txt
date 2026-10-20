@@ -1,0 +1,7 @@
+TarginoLauncher 0.1.2
+
+- Corrigida disputa de leitura do status.json durante atualizacoes do launcher.
+- Leitura permite substituicao atomica e tenta novamente no proximo ciclo em caso de bloqueio temporario.
+- Bloqueio persistente exibe mensagem apos 15 segundos, sem executar pacote nao validado.
+- Preservados os controles da interface durante a leitura de progresso.
+- Mantidas verificacoes de assinatura, tamanho e SHA256. Jogos e dados preservados.
