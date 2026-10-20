@@ -8,6 +8,14 @@ Interface comunitária independente para organizar e iniciar jogos recompilados 
 
 [Baixar a versão mais recente](https://github.com/timtompel/TarginoLauncher/releases/latest) · [Todas as versões](https://github.com/timtompel/TarginoLauncher/releases) · [Canal no Telegram](https://t.me/TarginoLauncher) · [Relatar um problema](https://github.com/timtompel/TarginoLauncher/issues)
 
+## Manual e fontes
+
+- [Manual do usuário em PDF](https://github.com/timtompel/TarginoLauncher/releases/download/v0.1.5/Manual-TarginoLauncher-Central-Arquivista.pdf).
+- [Código do frontend](work/src) e [guia de desenvolvimento](work/README.md).
+- Para compilar com os recursos binários e seus créditos, baixe o arquivo **Fontes.zip** na [release correspondente](https://github.com/timtompel/TarginoLauncher/releases/tag/v0.1.5).
+
+A partir da 0.1.5, o launcher reconecta instalações gerenciadas após renomeação da pasta, quando o destino pode ser verificado. A operação cria backup e não move jogos. A opção de cancelar consulta/download fica em Configurações.
+
 ## Sobre o projeto
 
 O TarginoLauncher é um frontend separado do programa original do Central Arquivista. Ele utiliza uma biblioteca compatível como fonte de catálogo e recursos, sem substituir a autoria ou modificar o código do programa original.
