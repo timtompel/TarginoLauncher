@@ -1,0 +1,10 @@
+TarginoLauncher 0.1.7
+
+- Corrige erro de propriedade Sum ao calcular progresso com pasta de download ainda vazia.
+- Corrige o mesmo caso no planejamento de desinstalacao de uma pasta vazia.
+- Calculo de tamanho retorna zero para lista vazia ou nula, sem interromper o acompanhamento da instalacao.
+- Novo teste reproduz o erro original e valida zero, um e varios arquivos.
+- Corrige leitura de versao por ID exato do post do Arquivista, sem aceitar a legenda de outro jogo.
+- Revisa registros antigos usando os metadados da operacao concluida, com backup.
+- Exibe separadamente versao instalada e versao no acervo, consultada nos arquivos do Arquivista para todos os jogos.
+- Jogos e dados preservados.

@@ -7,7 +7,7 @@ using System;
 using System.IO;
 public class FixtureTool {
  public static void Main(string[] args) {
-  if(Array.IndexOf(args,"export")>=0){File.WriteAllText(args[Array.IndexOf(args,"-o")+1],"{\"messages\":[{\"text\":\"Versao\\nFixture - 1.2.3\"}]}");return;}
+  if(Array.IndexOf(args,"export")>=0){File.WriteAllText(args[Array.IndexOf(args,"-o")+1],"{\"messages\":[{\"id\":999,\"text\":\"Versao\\nOutro jogo - 9.9.9\"},{\"id\":123,\"text\":\"Versao\\nFixture - 1.2.3\"}]}");return;}
   if(Array.IndexOf(args,"dl")>=0){string d=args[Array.IndexOf(args,"-d")+1];Directory.CreateDirectory(d);File.WriteAllText(Path.Combine(d,"fixture.rar"),"fixture");return;}
   if(args[0]=="lb"){Console.WriteLine(File.Exists("unsafe") ? "../escape.exe" : "Game.exe\nsettings.ini");return;}
   if(args[0]=="x"){string d=args[args.Length-1];Directory.CreateDirectory(d);File.WriteAllText(Path.Combine(d,"Game.exe"),"new binary");File.WriteAllText(Path.Combine(d,"settings.ini"),"package settings");return;}
@@ -33,6 +33,7 @@ foreach($badId in @('..\..\outside','C:\outside','UPPER','game/name','')){
  if($blocked.state -ne 'error' -or $blocked.message -notmatch 'inseguro'){throw 'Identificador inseguro aceito.'}
 }
 if($install.state -ne 'done' -or $install.version -ne '1.2.3'){throw ($install|ConvertTo-Json)}
+if($install.versionSource -ne 'arquivista-message' -or $install.versionMessageId -ne '123'){throw 'Origem exata da versao nao registrada.'}
 $settings=Join-Path $install.root 'settings.ini';[IO.File]::WriteAllText($settings,'user settings')
 $update=Run-Fixture 'update'
 if($update.state -ne 'done' -or [IO.File]::ReadAllText($settings) -ne 'user settings'){throw 'Update alterou configuracao'}

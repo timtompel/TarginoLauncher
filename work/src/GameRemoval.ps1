@@ -32,7 +32,7 @@ function Get-GameRemovalPlan($Game,[string]$AppRoot) {
         $relative=$_.FullName.Substring($actual.Length+1)
         $relative -match '(^|\\)(saves?|savegames|userdata|profiles|configs?|settings)(\\|$)' -or $_.Extension -in @('.sav','.srm','.eep','.mpk','.fla','.ini','.cfg','.toml','.json')
     })
-    [pscustomobject]@{id=$id;root=$actual;registry=$registry;map=$map;record=$record;saveFiles=$saveFiles;bytes=($files|Measure-Object Length -Sum).Sum}
+    [pscustomobject]@{id=$id;root=$actual;registry=$registry;map=$map;record=$record;saveFiles=$saveFiles;bytes=(Get-CatalogFilesSize $files)}
 }
 function Remove-ManagedGame($Game,[string]$AppRoot,[bool]$PreserveSaves=$true,[scriptblock]$RecycleAction) {
     $plan=Get-GameRemovalPlan $Game $AppRoot

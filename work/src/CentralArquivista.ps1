@@ -4,6 +4,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $script:ProductName='TarginoLauncher - Recompilados by Central Arquivista'
 . (Join-Path $PSScriptRoot 'Catalog.ps1')
+. (Join-Path $PSScriptRoot 'GameVersions.ps1')
 . (Join-Path $PSScriptRoot 'PortablePaths.ps1')
 . (Join-Path $PSScriptRoot 'Graphics.ps1')
 . (Join-Path $PSScriptRoot 'AdditionalCatalog.ps1')
@@ -84,7 +85,8 @@ function Get-InstallTools {
     $tdl=Join-Path $script:GamesRoot 'Arquivismo\Ferramentas\Tdl\tdl.exe'
     $unrar=Join-Path $script:GamesRoot 'Ferramentas\UnRAR\UnRAR.exe'
     if(-not(Test-Path -LiteralPath $unrar)){$unrar=Join-Path $script:GamesRoot 'Arquivismo\Ferramentas\UnRar\UnRAR.exe'}
-    if(-not(Test-Path -LiteralPath $tdl) -or -not(Test-Path -LiteralPath $unrar)){throw 'Ferramentas tdl/UnRAR nao encontradas na instalacao selecionada.'}
+    if(-not(Test-Path -LiteralPath $tdl)){throw 'Ferramenta tdl.exe ausente na base do Arquivista selecionada. Selecione uma base completa. O aplicativo Telegram Desktop nao e necessario.'}
+    if(-not(Test-Path -LiteralPath $unrar)){throw 'Ferramenta UnRAR ausente na base do Arquivista selecionada. Selecione uma base completa para extrair os jogos.'}
     return @{tdl=$tdl;unrar=$unrar;session=(Join-Path $script:AppRoot 'Dados\Telegram\session.json')}
 }
 $connectButton.Add_Click({try{
@@ -320,6 +322,7 @@ function Load-Catalog {
         }
         $installedFile=Join-Path $script:AppRoot 'Dados\instalados.json'
         [void](Repair-ManagedInstallPaths $script:AppRoot)
+        Repair-ManagedGameVersions $script:AppRoot
         $additional=@(Read-AdditionalGames $script:AppRoot)
         foreach($extra in $additional){
             $full=Resolve-CatalogPath $extra.libraryRoot $extra.executable
@@ -330,13 +333,20 @@ function Load-Catalog {
             $saved=Read-CentralJson $installedFile
             foreach($game in $script:Catalog){
                 $prop=$saved.PSObject.Properties[$game.id]
-                if($prop){$record=$prop.Value;$game.version=$record.version;$game.executable=$record.executable;$game.workingDirectory=Split-Path $record.executable -Parent;if(-not $game.workingDirectory){$game.workingDirectory='.'};$game|Add-Member -NotePropertyName managedRoot -NotePropertyValue $record.root -Force}
+                if($prop){$record=$prop.Value;$game.version=$record.version;$game.executable=$record.executable;$game.workingDirectory=Split-Path $record.executable -Parent;if(-not $game.workingDirectory){$game.workingDirectory='.'};$game|Add-Member -NotePropertyName managedRoot -NotePropertyValue $record.root -Force;$game|Add-Member -NotePropertyName versionVerified -NotePropertyValue ((Get-OptionalCatalogText $record 'versionSource') -eq 'arquivista-message') -Force}
             }
         }
         $originalVersions=Join-Path $script:GamesRoot 'Arquivismo\Cache\versoes_jogos.json'
         if(Test-Path -LiteralPath $originalVersions){
             $versionMap=Read-CentralJson $originalVersions
             foreach($game in $script:Catalog){if(-not $game.PSObject.Properties['managedRoot']){$prop=$versionMap.PSObject.Properties[$game.id];if($prop){$game.version=if($prop.Value -is [string]){$prop.Value}else{[string]$prop.Value.Ver}}}}
+        }
+        $acervoVersions=Read-ArquivistaAcervoVersions $script:GamesRoot
+        foreach($game in $script:Catalog){
+            $available='';$checked=''
+            if($acervoVersions.ContainsKey($game.id)){$available=$acervoVersions[$game.id].version;$checked=$acervoVersions[$game.id].checked}
+            $game|Add-Member -NotePropertyName availableVersion -NotePropertyValue $available -Force
+            $game|Add-Member -NotePropertyName versionChecked -NotePropertyValue $checked -Force
         }
         $previousPlatform=[string]$PlatformFilter.SelectedItem
         $PlatformFilter.Items.Clear();[void]$PlatformFilter.Items.Add('Todas as plataformas')
@@ -431,7 +441,7 @@ function Open-DownloadSource {
     $url = $null
     if (-not [Uri]::TryCreate($script:Selected.downloadLink,[UriKind]::Absolute,[ref]$url) -or $url.Scheme -notin @('https','http')) { Set-Status 'Link de download ausente ou invalido.' $true; return }
     $tools=Get-InstallTools
-    if(-not(Test-Path -LiteralPath $tools.session)){throw 'Clique em Conectar Telegram e conclua a leitura do QR antes de baixar.'}
+    if(-not(Test-Path -LiteralPath $tools.session)){throw 'Conta nao conectada neste PC. Use Configuracoes > Conectar Telegram e leia o QR pelo celular. Nao precisa instalar Telegram Desktop.'}
     if($script:Selected.id -notmatch '^[a-zA-Z0-9._-]+$'){throw 'Identificador de jogo invalido.'}
     $jobDir=Join-Path $script:AppRoot ('Cache\Operacoes\'+[Guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $jobDir -Force|Out-Null
@@ -466,7 +476,12 @@ $Games.Add_SelectionChanged({
         }
         $installed = Test-Path -LiteralPath (Resolve-CatalogPath (Get-GameRoot $script:Selected) $script:Selected.executable) -PathType Leaf
         $versionText = if (-not $installed) { 'Versao instalada: nenhuma' } elseif ([string]::IsNullOrWhiteSpace($script:Selected.version)) { 'Versao instalada: sem registro local' } else { 'Versao instalada: ' + $script:Selected.version }
+        if($installed -and $script:Selected.PSObject.Properties['versionVerified'] -and -not $script:Selected.versionVerified){$versionText='Versao instalada: registro antigo nao confirmado'}
         $Meta.Text = $(if ($installed) { 'Instalado' } else { 'Nao instalado' }) + "`n" + $versionText
+        if($script:Selected.PSObject.Properties['availableVersion']){
+            $Meta.Text += "`nNo acervo (Arquivista): " + $(if($script:Selected.availableVersion){$script:Selected.availableVersion}else{'nao informado'})
+            if($script:Selected.versionChecked){$Meta.Text += "`nConferido: " + $script:Selected.versionChecked}
+        }
         $Play.Content = if ($installed) { 'Jogar' } else { 'Baixar' }
         $UpdateButton.IsEnabled = $installed
         $UpdateButton.Visibility = if ($installed) { 'Visible' } else { 'Collapsed' }
@@ -588,13 +603,13 @@ $installTimer.Add_Tick({
         if(-not(Test-Path -LiteralPath $statusPath)){return}
         $result=Read-CentralJson $statusPath
         $bytes=0; $downloadPath=Join-Path $script:ActiveInstall 'downloads'
-        if(Test-Path -LiteralPath $downloadPath){$bytes=(Get-ChildItem -LiteralPath $downloadPath -File|Measure-Object Length -Sum).Sum}
+        if(Test-Path -LiteralPath $downloadPath){$bytes=Get-CatalogFilesSize @(Get-ChildItem -LiteralPath $downloadPath -File)}
         Set-Status ($result.message+$(if($bytes){' | '+[Math]::Round($bytes/1MB,1)+' MB recebidos'}else{''})) ($result.state -eq 'error')
         if($result.state -eq 'error'){$script:ActiveInstall=$null;$cancelButton.Visibility='Collapsed';$OperationProgress.Visibility='Collapsed';return}
         if($result.state -ne 'done'){return}
         $mapFile=Join-Path $script:AppRoot 'Dados\instalados.json'
         $map=@{};if(Test-Path -LiteralPath $mapFile){$old=Read-CentralJson $mapFile;foreach($prop in $old.PSObject.Properties){$map[$prop.Name]=$prop.Value};Copy-Item -LiteralPath $mapFile -Destination ($mapFile+'.bak') -Force}
-        $map[$result.id]=@{version=$result.version;root=$result.root;executable=$result.executable;author=$result.author}
+        $map[$result.id]=@{version=$result.version;root=$result.root;executable=$result.executable;author=$result.author;versionSource=$result.versionSource;versionMessageId=$result.versionMessageId}
         [IO.File]::WriteAllText(($mapFile+'.tmp'),($map|ConvertTo-Json -Depth 6),[Text.Encoding]::UTF8)
         Move-Item -LiteralPath ($mapFile+'.tmp') -Destination $mapFile -Force
         $completedId=$result.id

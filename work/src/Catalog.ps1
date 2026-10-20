@@ -1,5 +1,11 @@
 Set-StrictMode -Version Latest
 
+function Get-CatalogFilesSize([IO.FileInfo[]]$Files=@()) {
+    [long]$bytes=0
+    foreach($file in $Files){if($null -ne $file){$bytes+=$file.Length}}
+    return $bytes
+}
+
 function Get-OptionalCatalogText($Record,[string]$Name) {
     $property=$Record.PSObject.Properties[$Name]
     if($null -eq $property -or $null -eq $property.Value){return ''}

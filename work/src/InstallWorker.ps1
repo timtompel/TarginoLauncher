@@ -1,6 +1,7 @@
 param([Parameter(Mandatory)][string]$Request)
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'Catalog.ps1')
+. (Join-Path $PSScriptRoot 'GameVersions.ps1')
 $req = Read-CentralJson $Request
 $jobDir = Split-Path $Request -Parent
 $statusFile = Join-Path $jobDir 'status.json'
@@ -63,15 +64,8 @@ try {
     Report 'running' 'Consultando a versao disponivel...'
     [void](Run-Tool $req.tdl @('--storage',$storage,'chat','export','-c',$chat,'-T','id','-i',"$mid",'--all','--with-content','-o',$metaFile))
     $meta=Read-CentralJson $metaFile
-    $version=''; $author=''
-    foreach($m in $meta.messages){
-        $text=''; foreach($field in 'text','message'){if($m.PSObject.Properties[$field]){$text += [string]$m.$field}}
-        if($text -match '(?im)^\s*Vers[ãa]o\s*\r?\n\s*([^\r\n]+)'){
-            $line=$Matches[1].Trim(); $version=$line
-            if($line -match '^(.*?)\s[-–—]\s(.+)$'){$author=$Matches[1];$version=$Matches[2]}
-            break
-        }
-    }
+    $versionInfo=Get-ArquivistaMessageVersion $meta $req.link
+    $version=$versionInfo.version;$author=$versionInfo.author
     if(-not $version){throw 'A mensagem nao informou uma versao identificavel. Nenhum jogo foi alterado.'}
     # Atualizacoes tambem baixam o pacote: a mesma versao pode conter novos mods.
     $downloads=Join-Path $jobDir 'downloads'; New-Item -ItemType Directory -Path $downloads -Force|Out-Null
@@ -136,5 +130,5 @@ try {
         foreach($rel in $copied){$target=Resolve-CatalogPath $dest $rel;$bak=Resolve-CatalogPath $backup $rel;if(Test-Path -LiteralPath $bak){Copy-Item -LiteralPath $bak -Destination $target -Force}else{Remove-Item -LiteralPath $target -Force -ErrorAction SilentlyContinue}}
         throw
     }
-    Report 'done' 'Instalacao concluida.' @{version=$version;author=$author;root=$dest;executable=$relativeExe;id=$req.id}
+    Report 'done' 'Instalacao concluida.' @{version=$version;author=$author;root=$dest;executable=$relativeExe;id=$req.id;versionSource=$versionInfo.source;versionMessageId=$versionInfo.messageId}
 } catch { Report 'error' $_.Exception.Message; exit 1 }
