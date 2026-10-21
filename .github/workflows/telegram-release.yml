@@ -1,0 +1,38 @@
+name: Avisar release no Telegram
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Tag estável já publicada, por exemplo v0.1.9'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: telegram-release-${{ github.event.release.tag_name || inputs.release_tag }}
+  cancel-in-progress: false
+
+jobs:
+  notify:
+    if: github.repository == 'timtompel/TarginoLauncher' && (github.event_name == 'workflow_dispatch' || (!github.event.release.draft && !github.event.release.prerelease))
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Buscar script da branch principal
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: main
+          persist-credentials: false
+          sparse-checkout: |
+            scripts/telegram_release.py
+          sparse-checkout-cone-mode: false
+      - name: Publicar aviso no canal
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag }}
+        run: python3 scripts/telegram_release.py
