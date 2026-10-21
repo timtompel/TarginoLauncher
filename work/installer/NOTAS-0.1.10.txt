@@ -1,0 +1,10 @@
+Corrige caminhos longos na extracao de jogos e melhora o diagnostico de falhas.
+
+- Extracao com caminho curto e remocao da pasta de titulo redundante em pacotes compativeis.
+- Novas instalacoes nao repetem o nome longo do jogo dentro da Biblioteca; instalacoes antigas mantem o layout.
+- Codigo 9 do UnRAR passa a informar erro de criacao de arquivo, sem exigir reconexao indevida no Telegram.
+- Nova tentativa reutiliza a pasta de download da operacao falha do mesmo jogo e fonte.
+- Downloads e extracoes temporarias sao limpos depois da instalacao e do registro na biblioteca; jogos, saves e backups de recuperacao sao preservados.
+- Inclui instalador web / bootstrap para baixar o Setup da ultima versao estavel.
+
+Nao inclui jogos nem o programa original. Base: Central Arquivista. Manifesto RSA-SHA256 assinado; executaveis sem certificado Authenticode.

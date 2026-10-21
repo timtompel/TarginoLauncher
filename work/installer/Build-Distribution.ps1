@@ -50,3 +50,4 @@ $setup=Join-Path $out ('TarginoLauncher-Recompilados-'+$version+'-Setup.exe')
 if($LASTEXITCODE){throw 'Falha ao compilar instalador.'}
 Write-Output ('SETUP='+$setup)
 Write-Output ('BUILD='+$build)
+if($Version -notmatch '-') { & (Join-Path $PSScriptRoot 'Build-StableBootstrap.ps1') -Workspace $Workspace -Version $Version }

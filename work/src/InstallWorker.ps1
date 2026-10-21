@@ -26,7 +26,14 @@ function Run-Tool($exe,$arguments,[int]$TimeoutSeconds=14400) {
         if($watch.Elapsed.TotalSeconds -gt $TimeoutSeconds){$p.Kill();throw ('Tempo limite de '+$TimeoutSeconds+' segundos excedido. Verifique a conexao e tente novamente.')}
     }
     $out=$outTask.Result; $err=$errTask.Result
-    if($p.ExitCode -ne 0){throw "Ferramenta terminou com codigo $($p.ExitCode). Verifique conexao e autenticacao no Telegram."}
+    if($p.ExitCode -ne 0){
+        $tool=[IO.Path]::GetFileNameWithoutExtension($exe)
+        $detail=($err+' '+$out) -replace '\x1b\[[0-9;]*[A-Za-z]','' -replace '[\r\n]+',' '
+        $detail=$detail -replace '(?i)(token|auth_key|phone|password|session)\s*[:=]\s*\S+','$1=[oculto]'
+        if($detail.Length -gt 1200){$detail=$detail.Substring($detail.Length-1200)}
+        if($tool -match 'unrar' -and $p.ExitCode -eq 9){throw "Falha ao criar arquivo na extracao (UnRAR 9). Verifique caminho longo, permissao e protecao do Windows. Nao e necessario reconectar Telegram. $detail"}
+        throw "$tool terminou com codigo $($p.ExitCode). $detail"
+    }
     return $out
 }
 function Assert-NoInstallLinks([string]$Path){
@@ -78,25 +85,37 @@ try {
     $listing=Run-Tool $req.unrar @('lb','-p-',$archives[0].FullName)
     $details=Run-Tool $req.unrar @('lt','-p-',$archives[0].FullName)
     if($details -match '(?im)^\s*(Type|Redir|Target)\s*:.*(link|junction|redirect)|symbolic link|hard link'){throw 'Pacote com links nao permitido.'}
-    $stage=Join-Path $jobDir 'extraido'; New-Item -ItemType Directory -Path $stage -Force|Out-Null
-    foreach($name in ($listing -split '\r?\n'|Where-Object {$_})){
+    # Nome curto evita ultrapassar MAX_PATH nos pacotes com node_modules.
+    $stage=Join-Path $jobDir 'x'; New-Item -ItemType Directory -Path $stage -Force|Out-Null
+    Assert-NoInstallLinks $stage
+    if(@(Get-ChildItem -LiteralPath $stage -Recurse -Force|Where-Object {$_.Attributes -band [IO.FileAttributes]::ReparsePoint}).Count){throw 'Extracao anterior possui links. Operacao bloqueada.'}
+    $archiveNames=@($listing -split '\r?\n'|Where-Object {$_})
+    if(-not $archiveNames.Count){throw 'Pacote vazio. Download preservado.'}
+    foreach($name in $archiveNames){
         if($name -match '(^|[\\/])\.\.([\\/]|$)|:|^[\\/]' ){throw 'Pacote com caminho inseguro.'}
         [void](Resolve-CatalogPath $stage $name)
     }
+    $archivePrefix=''
+    $firstRoot=($archiveNames[0] -split '[\\/]')[0]
+    if($firstRoot -and @($archiveNames | Where-Object {$_ -ne $firstRoot -and -not $_.StartsWith($firstRoot+'\',[StringComparison]::OrdinalIgnoreCase)}).Count -eq 0 -and @($archiveNames | Where-Object {$_ -match '[\\/]'}).Count){$archivePrefix=$firstRoot+'\'}
+    $extractArgs=@('x','-o+','-p-','-idq')
+    if($archivePrefix){$extractArgs+=('-ep4'+$archivePrefix.TrimEnd('\'))}
     [void](Run-Tool $req.unrar @('t','-p-',$archives[0].FullName))
     Report 'running' 'Extraindo em pasta isolada...'
-    [void](Run-Tool $req.unrar @('x','-o-','-p-','-idq',$archives[0].FullName,($stage+'\')))
+    [void](Run-Tool $req.unrar ($extractArgs+@($archives[0].FullName,($stage+'\'))))
     if(@(Get-ChildItem -LiteralPath $stage -Recurse -Force|Where-Object {$_.Attributes -band [IO.FileAttributes]::ReparsePoint}).Count){throw 'Pacote com links de arquivos nao permitido.'}
     $expected=[IO.Path]::GetFileName($req.executable)
     $candidates=@(Get-ChildItem -LiteralPath $stage -Filter $expected -Recurse -File)
     if($candidates.Count -ne 1){throw "Nao foi encontrado um unico executavel esperado ($expected). Extracao preservada para revisao."}
-    $relativeExe=$candidates[0].FullName.Substring($stage.Length+1)
+    $payloadRoot=$stage
+    # Mantem o layout de instalacoes antigas; novas nao repetem o titulo.
+    $installPrefix=''
+    if($archivePrefix -and (Test-Path -LiteralPath (Join-Path $dest $archivePrefix))){$installPrefix=$archivePrefix}
+    $relativeExe=$candidates[0].FullName.Substring($payloadRoot.Length+1)
+    if($installPrefix){$relativeExe=Join-Path $installPrefix $relativeExe}
     if(-not(Test-Path -LiteralPath $dest) -and $req.PSObject.Properties['originalDirectory']){
         Report 'running' 'Copiando a instalacao existente com saves e configuracoes...'
-        $prefix=''
-        $top=@(Get-ChildItem -LiteralPath $stage -Force)
-        if($top.Count -eq 1 -and $top[0].PSIsContainer){$prefix=$top[0].Name}
-        $seed=if($prefix){Join-Path $dest $prefix}else{$dest}
+        $seed=$dest
         foreach($file in (Get-ChildItem -LiteralPath $req.originalDirectory -Recurse -File -Force)){
             if($file.Attributes -band [IO.FileAttributes]::ReparsePoint){throw 'A instalacao existente possui links. Revise antes de atualizar.'}
             $rel=$file.FullName.Substring($req.originalDirectory.Length+1)
@@ -108,12 +127,13 @@ try {
     $backup=Join-Path $jobDir 'backup'
     # A biblioteca original permanece como fonte. Instalacoes novas ficam no launcher.
     Report 'running' 'Instalando e preservando configuracoes existentes...'
-    $files=@(Get-ChildItem -LiteralPath $stage -Recurse -File -Force)
+    $files=@(Get-ChildItem -LiteralPath $payloadRoot -Recurse -File -Force)
     $copied=New-Object Collections.Generic.List[string]
     try {
         foreach($file in $files){
             if(Test-Path -LiteralPath (Join-Path $jobDir 'cancel')){throw 'Operacao cancelada. Restaurando arquivos anteriores.'}
-            $rel=$file.FullName.Substring($stage.Length+1)
+            $rel=$file.FullName.Substring($payloadRoot.Length+1)
+            if($installPrefix){$rel=Join-Path $installPrefix $rel}
             $target=Resolve-CatalogPath $dest $rel
             Assert-NoInstallLinks $target
             if(Test-Path -LiteralPath $target){

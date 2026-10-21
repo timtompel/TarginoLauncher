@@ -444,6 +444,21 @@ function Open-DownloadSource {
     if(-not(Test-Path -LiteralPath $tools.session)){throw 'Conta nao conectada neste PC. Use Configuracoes > Conectar Telegram e leia o QR pelo celular. Nao precisa instalar Telegram Desktop.'}
     if($script:Selected.id -notmatch '^[a-zA-Z0-9._-]+$'){throw 'Identificador de jogo invalido.'}
     $jobDir=Join-Path $script:AppRoot ('Cache\Operacoes\'+[Guid]::NewGuid().ToString('N'))
+    # Retoma somente uma operacao falha do mesmo jogo/fonte nesta biblioteca.
+    $operations=Join-Path $script:AppRoot 'Cache\Operacoes'
+    if(Test-Path -LiteralPath $operations){
+        foreach($previous in (Get-ChildItem -LiteralPath $operations -Directory|Sort-Object LastWriteTime -Descending)){
+            if($previous.Name -cnotmatch '^[a-f0-9]{32}$' -or ($previous.Attributes -band [IO.FileAttributes]::ReparsePoint)){continue}
+            try{
+                $oldStatus=Read-CentralJson (Join-Path $previous.FullName 'status.json')
+                $oldRequest=Read-CentralJson (Join-Path $previous.FullName 'request.json')
+                if($oldStatus.state -eq 'error' -and $oldRequest.id -ceq $script:Selected.id -and $oldRequest.link -ceq $url.AbsoluteUri -and $oldRequest.appRoot -ieq $script:AppRoot -and $oldRequest.executable -ceq $script:Selected.executable){
+                    $jobDir=$previous.FullName
+                    break
+                }
+            }catch{}
+        }
+    }
     New-Item -ItemType Directory -Path $jobDir -Force|Out-Null
     $request=@{id=$script:Selected.id;link=$url.AbsoluteUri;executable=$script:Selected.executable;appRoot=$script:AppRoot;tdl=$tools.tdl;unrar=$tools.unrar;session=$tools.session}
     if(-not $script:Selected.PSObject.Properties['managedRoot']){
@@ -455,6 +470,7 @@ function Open-DownloadSource {
     }
     $requestFile=Join-Path $jobDir 'request.json'
     [IO.File]::WriteAllText($requestFile,($request|ConvertTo-Json),[Text.Encoding]::UTF8)
+    foreach($marker in @('cancel','status.json')){ $markerPath=Join-Path $jobDir $marker;if(Test-Path -LiteralPath $markerPath){Remove-Item -LiteralPath $markerPath -Force} }
     $script:InstallGame=$script:Selected
     $script:InstallProcess=Start-Process powershell.exe -ArgumentList ('-NoProfile -ExecutionPolicy Bypass -File "'+(Join-Path $PSScriptRoot 'InstallWorker.ps1')+'" -Request "'+$requestFile+'"') -WindowStyle Hidden -PassThru
     $script:ActiveInstall=$jobDir;$cancelButton.Visibility='Visible'
@@ -595,6 +611,7 @@ if(-not $Verify){$baseTimer.Start()}
 $window.Add_Closed({$baseTimer.Stop()})
 $sibling = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) 'Central Arquivista - WinPort'
 $installTimer=New-Object Windows.Threading.DispatcherTimer
+. (Join-Path $PSScriptRoot 'InstallCleanup.ps1')
 $installTimer.Interval=[TimeSpan]::FromSeconds(1)
 $installTimer.Add_Tick({
     if(-not $script:ActiveInstall){return}
@@ -612,6 +629,7 @@ $installTimer.Add_Tick({
         $map[$result.id]=@{version=$result.version;root=$result.root;executable=$result.executable;author=$result.author;versionSource=$result.versionSource;versionMessageId=$result.versionMessageId}
         [IO.File]::WriteAllText(($mapFile+'.tmp'),($map|ConvertTo-Json -Depth 6),[Text.Encoding]::UTF8)
         Move-Item -LiteralPath ($mapFile+'.tmp') -Destination $mapFile -Force
+        try{[void](Clear-CompletedInstallCache -AppRoot $script:AppRoot -Job $script:ActiveInstall)}catch{Set-Status ('Jogo instalado. Nao foi possivel limpar o cache: '+$_.Exception.Message) $true}
         $completedId=$result.id
         $script:ActiveInstall=$null;$cancelButton.Visibility='Collapsed';$OperationProgress.Visibility='Collapsed';Load-Catalog
         $game=$script:Catalog|Where-Object id -eq $completedId|Select-Object -First 1
