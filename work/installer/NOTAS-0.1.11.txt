@@ -1,0 +1,13 @@
+Fila de downloads, tratamento do erro de relogio do Telegram e mais resiliencia.
+
+- Fila de downloads: com um download em andamento, outros jogos entram na fila e comecam sozinhos, um por vez. Gerencie em Configuracoes > Fila de downloads.
+- Erro de relogio do Windows fora de hora (Telegram recusa a conexao): mensagem clara, nova tentativa com a hora da internet e aviso na tela Conectar Telegram.
+- Registro de jogos corrompido e restaurado da copia de seguranca, com aviso, sem derrubar a biblioteca.
+- Instalacao concluida com falha no registro nao deixa mais a interface presa repetindo o erro.
+- Verificacao automatica de atualizacao do launcher espera 3 horas entre aberturas (limite de consultas do GitHub) e explica erro 403/429.
+- Limpeza automatica de cache antigo e retencao dos 5 backups mais recentes do launcher.
+- Caminhos com espaco e barra final (raiz de unidade) nao quebram mais os processos auxiliares.
+- Foco por teclado/controle mais visivel, busca com pausa ao digitar, capas em cache e novo item Copiar ultima mensagem / erro.
+- Inclui instalador web / bootstrap para baixar o Setup da ultima versao estavel.
+
+Nao inclui jogos nem o programa original. Base: Central Arquivista. Manifesto RSA-SHA256 assinado; executaveis sem certificado Authenticode.

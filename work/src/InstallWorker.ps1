@@ -31,10 +31,25 @@ function Run-Tool($exe,$arguments,[int]$TimeoutSeconds=14400) {
         $detail=($err+' '+$out) -replace '\x1b\[[0-9;]*[A-Za-z]','' -replace '[\r\n]+',' '
         $detail=$detail -replace '(?i)(token|auth_key|phone|password|session)\s*[:=]\s*\S+','$1=[oculto]'
         if($detail.Length -gt 1200){$detail=$detail.Substring($detail.Length-1200)}
+        # O Telegram recusa conexoes quando o relogio do Windows esta fora de hora (msg_id too high/low).
+        if($tool -match 'tdl' -and $detail -match 'msg_id too (high|low)|bad_msg_notification'){throw ('RELOGIO: '+$detail)}
         if($tool -match 'unrar' -and $p.ExitCode -eq 9){throw "Falha ao criar arquivo na extracao (UnRAR 9). Verifique caminho longo, permissao e protecao do Windows. Nao e necessario reconectar Telegram. $detail"}
         throw "$tool terminou com codigo $($p.ExitCode). $detail"
     }
     return $out
+}
+# Executa o tdl. Se o Telegram recusar por relogio fora de hora, tenta uma vez usando a hora da internet (NTP).
+function Invoke-Tdl($exe,$arguments,[int]$TimeoutSeconds=14400) {
+    try { return (Run-Tool $exe $arguments $TimeoutSeconds) }
+    catch { if ($_.Exception.Message -notmatch '^RELOGIO:') { throw } }
+    Report 'running' 'O relogio do Windows esta fora de hora. Tentando de novo com a hora da internet (NTP)...'
+    try { return (Run-Tool $exe (@('--ntp','pool.ntp.org') + @($arguments)) $TimeoutSeconds) }
+    catch {
+        $inner = [string]$_.Exception.Message
+        if ($inner -match 'cancelada|Tempo limite') { throw }
+        if ($inner.Length -gt 300) { $inner = $inner.Substring(0,300) }
+        throw ('O relogio do Windows esta fora de hora e o Telegram recusou a conexao. Em Configuracoes do Windows > Hora e idioma, ative "Definir horario automaticamente", confira o fuso de Brasilia e clique em "Sincronizar agora". Depois tente baixar novamente. (Detalhe tecnico: '+$inner+')')
+    }
 }
 function Assert-NoInstallLinks([string]$Path){
     $cursor=[IO.Path]::GetFullPath($Path)
@@ -70,7 +85,7 @@ try {
     if($chat -eq 'c'){ $chat='-100'+$parts[1] }
     $metaFile=Join-Path $jobDir 'metadata.json'
     Report 'running' 'Consultando somente o post do jogo no Telegram...'
-    [void](Run-Tool $req.tdl (Get-ArquivistaMetadataArguments $req.link $storage $metaFile) 45)
+    [void](Invoke-Tdl $req.tdl (Get-ArquivistaMetadataArguments $req.link $storage $metaFile) 45)
     $meta=Read-CentralJson $metaFile
     $versionInfo=Get-ArquivistaMessageVersion $meta $req.link
     $version=$versionInfo.version;$author=$versionInfo.author
@@ -78,7 +93,7 @@ try {
     # Atualizacoes tambem baixam o pacote: a mesma versao pode conter novos mods.
     $downloads=Join-Path $jobDir 'downloads'; New-Item -ItemType Directory -Path $downloads -Force|Out-Null
     Report 'running' ("Baixando versao $version...")
-    [void](Run-Tool $req.tdl @('--storage',$storage,'--reconnect-timeout','2m','-l','1','-t','2','dl','--group','--continue','--skip-same','--template','{{ filenamify .FileName }}','-d',$downloads,'-u',$req.link))
+    [void](Invoke-Tdl $req.tdl @('--storage',$storage,'--reconnect-timeout','2m','-l','1','-t','2','dl','--group','--continue','--skip-same','--template','{{ filenamify .FileName }}','-d',$downloads,'-u',$req.link))
     $archives=@(Get-ChildItem -LiteralPath $downloads -File | Where-Object {$_.Name -match '\.rar$' -and $_.Name -notmatch '\.part(?!0*1\.)\d+\.rar$'})
     if($archives.Count -ne 1){throw 'Esperado um pacote RAR (ou primeira parte). Os arquivos foram mantidos para revisao.'}
     Report 'running' 'Verificando o pacote...'

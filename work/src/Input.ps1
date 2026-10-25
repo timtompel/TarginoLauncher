@@ -127,7 +127,7 @@ function Initialize-LauncherInput {
         $focus=[Windows.Input.Keyboard]::FocusedElement
         if($focus -is [Windows.Controls.TextBox]){
             if($e.Key -eq 'Escape'){[void]$Games.Focus();$e.Handled=$true}
-            elseif($e.Key -eq 'Down' -and $focus -eq $Search -and $Games.SelectedItem){[void]$Games.SelectedItem.Focus();$e.Handled=$true}
+            elseif($e.Key -eq 'Down' -and $focus -eq $Search -and $Games.SelectedItem){if($script:SearchTimer -and $script:SearchTimer.IsEnabled){$script:SearchTimer.Stop();Refresh-List};if($Games.SelectedItem){[void]$Games.SelectedItem.Focus()};$e.Handled=$true}
             return
         }
         $command=switch([string]$e.Key){Left{'Left'}Right{'Right'}Up{'Up'}Down{'Down'}Return{'Confirm'}Enter{'Confirm'}Escape{'Back'}D{'Details'}F{'Search'}PageUp{'PageLeft'}PageDown{'PageRight'}default{''}}

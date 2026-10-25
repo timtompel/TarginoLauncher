@@ -12,12 +12,14 @@ function Resolve-ManagedInstallRoot([string]$AppRoot,[string]$Id,$Record){
 function Repair-ManagedInstallPaths([string]$AppRoot){
     $path=Join-Path $AppRoot 'Dados\instalados.json'
     if(-not(Test-Path -LiteralPath $path)){return 0}
-    $map=Read-CentralJson $path;$changed=0
+    $script:JsonRecoveredFromBackup=$null
+    $map=Read-CentralJsonOrBackup $path;$changed=0
+    $recovered=($script:JsonRecoveredFromBackup -eq $path)
     foreach($property in $map.PSObject.Properties){
         $root=Resolve-ManagedInstallRoot $AppRoot $property.Name $property.Value
         if($root -ine $property.Value.root){$property.Value.root=$root;$changed++}
     }
-    if($changed){
+    if($changed -or $recovered){
         $temporary=$path+'.relocation-'+[Guid]::NewGuid().ToString('N')+'.tmp'
         [IO.File]::WriteAllText($temporary,($map|ConvertTo-Json -Depth 12),[Text.UTF8Encoding]::new($true))
         [IO.File]::Replace($temporary,$path,($path+'.antes-renomeacao-'+[Guid]::NewGuid().ToString('N')+'.bak'))

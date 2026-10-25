@@ -20,7 +20,7 @@ try{
         Write-State @{state='working';message='Consultando versoes estaveis do TarginoLauncher...'}
         $releaseFile=Join-Path $Job 'release.json'
         try{Receive-FrontendFile 'https://api.github.com/repos/timtompel/TarginoLauncher/releases/latest' $releaseFile 1MB $null $cancelPath}
-        catch [Net.WebException]{if($_.Exception.Response -and [int]$_.Exception.Response.StatusCode -eq 404){Write-State @{state='none';message='Nenhuma versao estavel publicada.'};exit 0};throw}
+        catch [Net.WebException]{if($_.Exception.Response -and [int]$_.Exception.Response.StatusCode -eq 404){Write-State @{state='none';message='Nenhuma versao estavel publicada.'};exit 0};if($_.Exception.Response -and [int]$_.Exception.Response.StatusCode -in 403,429){Write-State @{state='error';message='O GitHub limitou temporariamente as consultas de atualizacao. Tente novamente em alguns minutos.'};exit 1};throw}
         $release=[IO.File]::ReadAllText($releaseFile)|ConvertFrom-Json
         $candidate=Get-FrontendStableRelease $release
         if(-not(Test-FrontendNewer $installed $candidate.version)){Write-State @{state='current';message='TarginoLauncher: nenhuma estavel mais recente.'};exit 0}

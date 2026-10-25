@@ -1,4 +1,4 @@
-. (Join-Path $PSScriptRoot 'GameRemoval.ps1')
+﻿. (Join-Path $PSScriptRoot 'GameRemoval.ps1')
 function Show-LauncherAbout {
     $about=New-Object Windows.Window;$about.Title='Sobre o TarginoLauncher';$about.Width=540;$about.SizeToContent='Height';$about.MaxHeight=650;$about.WindowStartupLocation='CenterOwner';$about.ResizeMode='NoResize';$about.Background='#1B2428';$about.Foreground='White';$about.FontFamily='Segoe UI'
     if(-not $Verify){$about.Owner=$window}
@@ -46,7 +46,7 @@ function Show-LauncherActionList([string]$MenuTitle,$Actions) {
 }
 function Show-GameRemovalDialog {
     if(-not $script:Selected){return}
-    if($script:ActiveInstall -or ($script:FrontendProcess -and -not $script:FrontendProcess.HasExited)){throw 'Aguarde as operacoes em andamento antes de desinstalar.'}
+    if($script:ActiveInstall -or $script:DownloadQueue.Count -or ($script:FrontendProcess -and -not $script:FrontendProcess.HasExited)){throw 'Aguarde as operacoes em andamento antes de desinstalar.'}
     $game=$script:Selected;$plan=Get-GameRemovalPlan $game $script:AppRoot
     $dialog=New-Object Windows.Window;$dialog.Title='Desinstalar jogo';$dialog.Owner=$window;$dialog.Width=510;$dialog.SizeToContent='Height';$dialog.WindowStartupLocation='CenterOwner';$dialog.ResizeMode='NoResize'
     Enable-ModalKeyboard $dialog
@@ -101,6 +101,8 @@ $headerActions=$Reload.Parent;$Reload.Visibility='Collapsed';$connectButton.Visi
 $settings=New-Object Windows.Controls.Button;$settings.Content='Configuracoes';$settings.Height=40;$settings.MinWidth=130;$settings.Padding='14,0';$settings.Margin='0';[void]$headerActions.Children.Add($settings)
 $script:ControllerSettingsSource=New-Object Windows.Controls.Button;$ControllerSettingsSource.Add_Click({Show-ControlSettings})
 $script:AboutButton=New-Object Windows.Controls.Button;$AboutButton.Content='Sobre';$AboutButton.Add_Click({Show-LauncherAbout})
+$script:CopyErrorButton=New-Object Windows.Controls.Button;$CopyErrorButton.Add_Click({try{[Windows.Clipboard]::SetText([string]$Status.Text);[void][Windows.MessageBox]::Show('Mensagem copiada para a area de transferencia.','TarginoLauncher')}catch{}})
+$script:QueueButton=New-Object Windows.Controls.Button;$QueueButton.Add_Click({Show-DownloadQueue})
 $settings.Add_Click({Show-LauncherActionList 'Configuracoes' @(
     @{label='Escolher biblioteca';source=$ChooseRoot;enabled=$true},
     @{label='Recarregar catalogo';source=$Reload;enabled=$true},
@@ -111,6 +113,8 @@ $settings.Add_Click({Show-LauncherActionList 'Configuracoes' @(
     @{label='Cancelar atualizacao do launcher';source=$CancelFrontendButton;enabled=([bool]$script:FrontendProcess -and -not $script:FrontendProcess.HasExited)},
     @{label='Verificar Central original';source=$baseCheckButton;enabled=$baseCheckButton.IsEnabled},
     @{label='Atualizar Central original (oficial)';source=$OfficialBaseUpdateButton;enabled=([bool]$script:BaseLatestResult -and $script:BaseLatestResult.state -eq 'changed' -and $script:BaseLatestRoot -eq $script:GamesRoot)},
+    @{label=('Fila de downloads ('+$script:DownloadQueue.Count+')');source=$QueueButton;enabled=($script:DownloadQueue.Count -gt 0)},
+    @{label='Copiar ultima mensagem / erro';source=$CopyErrorButton;enabled=(-not [string]::IsNullOrWhiteSpace($Status.Text))},
     @{label='Sobre';source=$AboutButton;enabled=$true}
 )})
 foreach($child in $PlatformHome.Children){if($child -is [Windows.Controls.Button]){$child.Visibility='Collapsed'}}

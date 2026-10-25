@@ -1,4 +1,13 @@
-Set-StrictMode -Version Latest
+﻿Set-StrictMode -Version Latest
+
+$script:JsonRecoveredFromBackup=$null
+
+# Um unico lugar para montar argumentos de linha de comando do Windows.
+# Aspas e barras finais (ex.: raiz de unidade 'D:\') quebravam a concatenacao manual.
+function ConvertTo-WindowsArgument([string]$Value) {
+    if($Value -ne '' -and $Value -notmatch '[\s"]'){return $Value}
+    return '"'+([regex]::Replace($Value,'(\\*)"','$1$1\"') -replace '(\\+)$','$1$1')+'"'
+}
 
 function Get-CatalogFilesSize([IO.FileInfo[]]$Files=@()) {
     [long]$bytes=0
@@ -34,6 +43,36 @@ function Read-CentralJson {
     catch { throw "JSON inválido em '$Path': $($_.Exception.Message)" }
 }
 
+# Le JSON pessoal (ex.: instalados.json). Se o arquivo estiver corrompido, usa a copia .bak
+# e registra o caminho em $script:JsonRecoveredFromBackup para a interface avisar o usuario.
+function Read-CentralJsonOrBackup {
+    param([Parameter(Mandatory)][string]$Path)
+    try { return (Read-CentralJson $Path) }
+    catch {
+        $backup = $Path + '.bak'
+        if ([IO.File]::Exists($backup)) {
+            try { $data = Read-CentralJson $backup; $script:JsonRecoveredFromBackup = $Path; return $data } catch { }
+        }
+        throw
+    }
+}
+
+# Leitura tolerante a arquivo em troca (o worker substitui status.json enquanto a interface le).
+# Retorna $null quando o arquivo esta momentaneamente bloqueado.
+function Read-SharedJson {
+    param([Parameter(Mandatory)][string]$Path)
+    $stream = $null; $reader = $null
+    try {
+        $sharing = [IO.FileShare]::ReadWrite -bor [IO.FileShare]::Delete
+        $stream = [IO.File]::Open($Path, [IO.FileMode]::Open, [IO.FileAccess]::Read, $sharing)
+        $reader = New-Object IO.StreamReader($stream, [Text.Encoding]::UTF8, $true)
+        return ($reader.ReadToEnd() | ConvertFrom-Json)
+    } catch {
+        if ($_.Exception.GetBaseException() -is [IO.IOException]) { return $null }
+        throw
+    } finally { if ($reader) { $reader.Dispose() } elseif ($stream) { $stream.Dispose() } }
+}
+
 function Resolve-CatalogPath {
     param([Parameter(Mandatory)][string]$Root, [Parameter(Mandatory)][string]$RelativePath)
     if ([IO.Path]::IsPathRooted($RelativePath)) { throw "O catálogo deve usar caminhos relativos: $RelativePath" }
@@ -61,6 +100,7 @@ function Start-CatalogGame {
     $check = Test-CatalogGame $Game $Root
     if (-not $check.Valid) { throw (($check.Errors) -join '; ') }
     $exe = Resolve-CatalogPath $Root $Game.executable
+    if ([IO.Path]::GetExtension($exe) -ine '.exe') { throw 'Somente executaveis .exe podem ser iniciados pelo launcher.' }
     $wd = Resolve-CatalogPath $Root $Game.workingDirectory
     $psi = [Diagnostics.ProcessStartInfo]::new()
     $psi.FileName = $exe
@@ -71,8 +111,7 @@ function Start-CatalogGame {
         # serializados para ProcessStartInfo, sem passar por cmd.exe.
         $quoted = foreach ($arg in $Game.arguments) {
             $text = [string]$arg
-            if ($text -notmatch '[\s"]') { $text; continue }
-            '"' + ([regex]::Replace($text, '(\\*)"', '$1$1\"') -replace '(\\+)$', '$1$1') + '"'
+            ConvertTo-WindowsArgument $text
         }
         $psi.Arguments = ($quoted -join ' ')
     }

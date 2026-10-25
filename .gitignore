@@ -16,3 +16,11 @@
 *private*.xml
 *.log
 *.tmp
+work-backup/
+resultado-testes.txt
+melhorias-v*/
+assets-*/
+release-*/
+**/software-test/
+**/mesa/
+*.7z

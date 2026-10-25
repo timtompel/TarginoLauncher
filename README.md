@@ -30,6 +30,7 @@ O projeto continua em desenvolvimento. Compatibilidade com jogos, drivers e cont
 - Jogos não instalados representados em tons de cinza.
 - Ação principal contextual: **Jogar** quando instalado ou **Baixar** quando disponível para download.
 - Download, extração e atualização de jogos pelo launcher, quando a fonte e as ferramentas da biblioteca forem compatíveis.
+- **Fila de downloads**: com um download em andamento, outros jogos entram na fila e são baixados um por vez (Configurações → Fila de downloads).
 - Informação de versão instalada e dados locais de jogadores, quando disponíveis.
 - Adição de jogos extras sem alterar o catálogo original.
 - Navegação por teclado e controle; configuração de botões para controles USB/WinMM e suporte a XInput.

@@ -1,0 +1,13 @@
+root = true
+
+[*]
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = false
+
+# PowerShell 5.1 le arquivos sem BOM como ANSI: UTF-8 com BOM evita acentos corrompidos ao rodar do codigo-fonte.
+[*.{ps1,cs,xaml}]
+charset = utf-8-bom
+
+[*.{md,json,txt}]
+charset = utf-8

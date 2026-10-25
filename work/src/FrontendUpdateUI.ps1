@@ -15,6 +15,7 @@ function Start-FrontendOperation([string]$Mode){
         $script:FrontendPending=$false
         $script:FrontendJob=Join-Path $script:AppRoot ('Cache\AtualizacaoLauncher\'+[Guid]::NewGuid().ToString('N'))
         New-Item -ItemType Directory -Force -Path $script:FrontendJob|Out-Null
+        try{[IO.File]::WriteAllText((Join-Path $script:AppRoot 'Dados\ultima-verificacao-launcher.txt'),[DateTime]::UtcNow.ToString('o'))}catch{}
     }
     $operationStatusPath=Join-Path $script:FrontendJob 'status.json'
     if(Test-Path -LiteralPath $operationStatusPath){Move-Item -LiteralPath $operationStatusPath -Destination (Join-Path $script:FrontendJob ('status-'+[Guid]::NewGuid().ToString('N')+'.json'))}
@@ -22,7 +23,7 @@ function Start-FrontendOperation([string]$Mode){
     $script:FrontendMode=$Mode
     $info=New-Object Diagnostics.ProcessStartInfo
     $info.FileName=Join-Path $PSHOME 'powershell.exe'
-    $info.Arguments='-NoProfile -ExecutionPolicy Bypass -File "'+(Join-Path $PSScriptRoot 'FrontendUpdateWorker.ps1')+'" -Job "'+$script:FrontendJob+'" -Mode '+$Mode+' -Root "'+$script:AppRoot+'"'
+    $info.Arguments='-NoProfile -ExecutionPolicy Bypass -File '+(ConvertTo-WindowsArgument (Join-Path $PSScriptRoot 'FrontendUpdateWorker.ps1'))+' -Job '+(ConvertTo-WindowsArgument $script:FrontendJob)+' -Mode '+$Mode+' -Root '+(ConvertTo-WindowsArgument $script:AppRoot)
     $info.UseShellExecute=$false;$info.CreateNoWindow=$true
     $script:FrontendProcess=[Diagnostics.Process]::Start($info)
     $FrontendButton.IsEnabled=$false;$FrontendText.Text='Consultando atualizacao do launcher...';$FrontendProgress.IsIndeterminate=$true;$FrontendProgress.Visibility='Visible'
@@ -73,7 +74,7 @@ function Update-FrontendProgressState {
             $m=Read-FrontendSignedManifest (Join-Path $script:FrontendJob 'update.json') (Join-Path $PSScriptRoot 'UpdatePublicKey.xml')
             $package=Join-Path $script:FrontendJob $m.fileName;Assert-FrontendPackage $package $m
             if(-not(Test-FrontendNewer (([IO.File]::ReadAllText((Join-Path $script:AppRoot 'versao.json'))|ConvertFrom-Json).version) $m.version)){throw 'Atualizacao antiga recusada.'}
-            $args='--apply-update "'+$script:AppRoot+'" '+$PID
+            $args='--apply-update '+(ConvertTo-WindowsArgument $script:AppRoot)+' '+$PID
             $p=New-Object Diagnostics.ProcessStartInfo;$p.FileName=$package;$p.Arguments=$args;$p.UseShellExecute=$false
             [void][Diagnostics.Process]::Start($p);$window.Close()
         }else{$script:FrontendConfirmAfterCheck=$false;$script:FrontendPending=$false;$FrontendButton.Content='Verificar launcher'}
@@ -81,4 +82,10 @@ function Update-FrontendProgressState {
 }
 $frontendTimer.Add_Tick({Update-FrontendProgressState})
 $frontendTimer.Start();$window.Add_Closed({$frontendTimer.Stop()})
-if(-not $Verify){$window.Add_ContentRendered({try{Start-FrontendOperation 'Check'}catch{$FrontendText.Text='Atualizador indisponivel: '+$_.Exception.Message}})}
+if(-not $Verify){$window.Add_ContentRendered({try{
+    # A API publica do GitHub limita consultas por IP: a consulta automatica na abertura espera 3 horas entre verificacoes.
+    $recent=$false
+    try{$stamp=Join-Path $script:AppRoot 'Dados\ultima-verificacao-launcher.txt';if([IO.File]::Exists($stamp)){$last=[DateTime]::Parse([IO.File]::ReadAllText($stamp).Trim(),[Globalization.CultureInfo]::InvariantCulture,[Globalization.DateTimeStyles]::RoundtripKind);$recent=($last -le [DateTime]::UtcNow -and ([DateTime]::UtcNow-$last).TotalHours -lt 3)}}catch{}
+    if($recent){$FrontendText.Text='TarginoLauncher: verificado ha pouco. Use Configuracoes > Verificar / atualizar launcher para consultar agora.'}
+    else{Start-FrontendOperation 'Check'}
+}catch{$FrontendText.Text='Atualizador indisponivel: '+$_.Exception.Message}})}

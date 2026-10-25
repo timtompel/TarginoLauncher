@@ -111,6 +111,7 @@ public class Setup : Form {
     string bak=Path.Combine(backup,rel);Directory.CreateDirectory(Path.GetDirectoryName(bak));File.Copy(dest,bak);old.Add(rel);copied.Add(rel);File.Delete(dest);
    }
    committed=true;
+   PruneBackups(target,5);
   }finally{
    try{
     if(!committed){
@@ -124,6 +125,30 @@ public class Setup : Form {
     if(Directory.Exists(stage))Directory.Delete(stage,true);
    }
   }
+ }
+ // Mantem so os backups mais recentes do frontend (nomes aaaammdd-hhmmss-xxxxxx); nunca toca em Dados, Cache ou Biblioteca.
+ static bool TreeHasLinks(DirectoryInfo folder){
+  if((folder.Attributes&FileAttributes.ReparsePoint)!=0)return true;
+  foreach(var item in folder.GetFileSystemInfos()){
+   if((item.Attributes&FileAttributes.ReparsePoint)!=0)return true;
+   var child=item as DirectoryInfo;if(child!=null&&TreeHasLinks(child))return true;
+  }
+  return false;
+ }
+ public static void PruneBackups(string target,int keep){
+  try{
+   string root=Path.Combine(target,"BackupsFrontend");
+   if(!Directory.Exists(root))return;
+   var rootInfo=new DirectoryInfo(root);if((rootInfo.Attributes&FileAttributes.ReparsePoint)!=0)return;
+   var names=new List<string>();
+   foreach(var dir in rootInfo.GetDirectories()){if(System.Text.RegularExpressions.Regex.IsMatch(dir.Name,@"^\d{8}-\d{6}-[0-9a-f]{6}$"))names.Add(dir.Name);}
+   names.Sort(StringComparer.Ordinal);
+   for(int i=0;i<names.Count-keep;i++){
+    var info=new DirectoryInfo(Path.Combine(root,names[i]));
+    if(TreeHasLinks(info))continue;
+    info.Delete(true);
+   }
+  }catch{}
  }
  static void Shortcut(string path,string executable,string root){
   Type type=Type.GetTypeFromProgID("WScript.Shell");object shell=Activator.CreateInstance(type);

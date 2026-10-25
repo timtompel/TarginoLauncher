@@ -34,6 +34,8 @@ Os scripts opcionais de conversão de imagem usam Node.js e `sharp` instalado se
 
 Execute cada arquivo `tests/*.Tests.ps1` em um processo PowerShell separado, com `-STA` para testes WPF. `UpdateCycle.Tests.ps1` e `installer/Test-Distribution.ps1` exigem `-SetupPath`. `OrganizedUI.Tests.ps1` exige `-AppRoot` e lê um catálogo conectado: não o execute contra dados desconhecidos.
 
+Testes adicionados na 0.1.11: `DownloadQueue.Tests.ps1` (fila de downloads), `Resilience.Tests.ps1` (argumentos de processo, JSON com copia de seguranca, leitura compartilhada, retencao de cache) e novos casos em `InstallErrors.Tests.ps1` (relogio do Telegram). A interface da fila so e coberta por teste manual.
+
 `--test-install` usa o motor real de instalação sem criar atalhos ou registro do Windows. `--test-apply-update` usa a espera do processo, instalação e reabertura de verificação WPF, sem registrar o aplicativo do teste como a instalação do usuário.
 
 Fixtures incluem apenas executáveis sintéticos. Testes de rede usam um transporte simulado para interrupção, timeout, cancelamento e limites. Não simular falta de espaço enchendo o disco do usuário.

@@ -1,4 +1,4 @@
-function Get-ArquivistaMessageVersion($Metadata,[string]$Link) {
+﻿function Get-ArquivistaMessageVersion($Metadata,[string]$Link) {
     $uri=$null
     if(-not [Uri]::TryCreate($Link,[UriKind]::Absolute,[ref]$uri) -or $uri.Scheme -ne 'https' -or $uri.Host -ne 't.me'){throw 'Fonte de versao invalida.'}
     $parts=$uri.AbsolutePath.Trim('/').Split('/')
@@ -58,7 +58,7 @@ function Read-ArquivistaAcervoVersions([string]$Root) {
 function Repair-ManagedGameVersions([string]$AppRoot) {
     $registry=Join-Path $AppRoot 'Dados\instalados.json';$operations=Join-Path $AppRoot 'Cache\Operacoes'
     if(-not [IO.File]::Exists($registry) -or -not [IO.Directory]::Exists($operations)){return}
-    $map=Read-CentralJson $registry;$changed=$false
+    $map=Read-CentralJsonOrBackup $registry;$changed=$false
     $jobs=@(Get-ChildItem -LiteralPath $operations -Directory|Sort-Object LastWriteTime -Descending)
     foreach($prop in $map.PSObject.Properties){
         $record=$prop.Value
