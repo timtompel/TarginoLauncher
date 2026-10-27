@@ -1,0 +1,21 @@
+Fila, atualização de jogos instalados, catálogo e diagnóstico.
+
+- Correção do encerramento inesperado ao abrir a fila de downloads.
+- Tratamento seguro ao remover itens ou limpar a fila.
+- Contador da fila diferencia o download ativo dos itens aguardando.
+- Nova opção Configurações → Atualizar jogos instalados.
+- Atualização individual ou em lote dos jogos instalados.
+- Comparação entre versão instalada e versão disponível antes de atualizar.
+- Relatório de jogos instalados, atualizados, ignorados e com falha.
+- Validação de IDs duplicados, campos ausentes e links inválidos do catálogo.
+- Detecção de novos títulos adicionados ao catálogo.
+- Exibição de tempo decorrido e velocidade do download quando disponível.
+- Post do Telegram sem versão identificável não interrompe mais uma instalação válida; o jogo é instalado como versão não confirmada para revisão.
+- Tratamento de erros de relógio do Telegram com nova tentativa via NTP.
+- Registro persistente de erros inesperados em Dados\\launcher.log.
+- O log oculta tokens, sessões, senhas e outras informações sensíveis.
+- Rotação automática do log para evitar crescimento indefinido.
+
+A fila de downloads permanece sequencial, com um download por vez. Downloads simultâneos de até cinco itens e progresso detalhado da extração permanecem planejados para uma atualização posterior.
+
+Não inclui jogos nem o programa original. Base: Central Arquivista.

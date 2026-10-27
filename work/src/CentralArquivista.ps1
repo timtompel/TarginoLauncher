@@ -1,4 +1,4 @@
-﻿param([switch]$Verify,[switch]$VerifyClean)
+param([switch]$Verify,[switch]$VerifyClean)
 if($VerifyClean){$Verify=$true}
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -17,6 +17,7 @@ if(-not ('TarginoLauncher.WindowIdentity' -as [type])){Add-Type -Path (Join-Path
 $xaml=[IO.File]::ReadAllText((Join-Path $PSScriptRoot 'MainWindow.xaml'))
 $reader = New-Object System.Xml.XmlNodeReader ([xml]$xaml)
 $window = [Windows.Markup.XamlReader]::Load($reader)
+$window.Dispatcher.Add_UnhandledException({param($sender,$eventArgs) Write-LauncherLog 'ui.unhandled' $eventArgs.Exception.ToString();$eventArgs.Handled=$true}.GetNewClosure())
 $window.Title=$script:ProductName
 $script:OperationProgress = New-Object Windows.Controls.ProgressBar
 $OperationProgress.Height = 10
@@ -62,6 +63,7 @@ $script:QueueResults = New-Object 'Collections.Generic.List[string]'
 $script:QueueUsed = $false
 $script:InstallGame = $null
 $script:InstallGame = $null
+$script:InstallStartedUtc=$null;$script:InstallLastBytes=0;$script:InstallLastSampleUtc=$null;$script:InstallSpeedBps=0
 $connectButton = New-Object Windows.Controls.Button
 $connectButton.Content = 'Conectar Telegram'
 $window.FindName('Reload').Parent.Children.Add($connectButton) | Out-Null
@@ -362,6 +364,10 @@ function Load-Catalog {
             $game|Add-Member -NotePropertyName availableVersion -NotePropertyValue $available -Force
             $game|Add-Member -NotePropertyName versionChecked -NotePropertyValue $checked -Force
         }
+        $script:CatalogValidation=Get-CatalogValidationReport $script:Catalog $script:GamesRoot
+        $script:NewCatalogTitles=@();$seenFile=Join-Path $script:AppRoot 'Dados\\titulos-vistos.json'
+        if(Test-Path -LiteralPath $seenFile){try{$oldIds=@(Read-CentralJson $seenFile);$script:NewCatalogTitles=@($script:Catalog|Where-Object {$oldIds -notcontains $_.id}|ForEach-Object {[string]$_.title})}catch{Write-LauncherLog 'catalog.seen' $_.Exception.ToString()}}
+        try{[IO.File]::WriteAllText(($seenFile+'.tmp'),(@($script:Catalog|ForEach-Object {[string]$_.id})|ConvertTo-Json),[Text.Encoding]::UTF8);Move-Item -LiteralPath ($seenFile+'.tmp') -Destination $seenFile -Force}catch{Write-LauncherLog 'catalog.seen.save' $_.Exception.ToString()}
         $previousPlatform=[string]$PlatformFilter.SelectedItem
         $script:SuppressRefresh=$true
         try{
@@ -370,7 +376,7 @@ function Load-Catalog {
         if($previousPlatform -and $PlatformFilter.Items.Contains($previousPlatform)){$PlatformFilter.SelectedItem=$previousPlatform}else{$PlatformFilter.SelectedIndex=0}
         }finally{$script:SuppressRefresh=$false}
         Build-PlatformButtons
-        Refresh-List; Set-Status "$($script:Catalog.Count) jogo(s) carregado(s)."
+        Refresh-List; $catalogStatus="$($script:Catalog.Count) jogo(s) carregado(s).";if($script:NewCatalogTitles.Count){$catalogStatus+=' Novos titulos: '+($script:NewCatalogTitles -join ', ')+'.'};if(-not $script:CatalogValidation.valid){$catalogStatus+=' Erros de catalogo: '+$script:CatalogValidation.errors.Count+'.'}elseif($script:CatalogValidation.warnings.Count){$catalogStatus+=' Avisos de catalogo: '+$script:CatalogValidation.warnings.Count+'.'};Set-Status $catalogStatus ($script:CatalogValidation.errors.Count -gt 0)
         if($script:JsonRecoveredFromBackup){Set-Status ('Aviso: '+[IO.Path]::GetFileName($script:JsonRecoveredFromBackup)+' estava corrompido; foi usada a copia de seguranca.') $true;$script:JsonRecoveredFromBackup=$null}
         $homeHeading.Text='ESCOLHA UMA PLATAFORMA'
         if ($Games.Items.Count -gt 0) { $Games.SelectedIndex = 0 }
@@ -473,7 +479,7 @@ function Update-PlayLabel {
     $Play.Content=if($installed){'Jogar'}elseif($script:ActiveInstall){if($script:InstallGame -and $script:InstallGame.id -ceq $script:Selected.id){'Baixando...'}else{'Adicionar a fila'}}else{'Baixar'}
 }
 function Clear-ActiveInstall {
-    $script:ActiveInstall=$null;$cancelButton.Visibility='Collapsed';$OperationProgress.Visibility='Collapsed'
+    $script:ActiveInstall=$null;$script:InstallStartedUtc=$null;$script:InstallLastBytes=0;$script:InstallLastSampleUtc=$null;$script:InstallSpeedBps=0;$cancelButton.Visibility='Collapsed';$OperationProgress.Visibility='Collapsed'
     Update-PlayLabel
 }
 # Inicia imediatamente o download de UM jogo (nao usa fila).
@@ -511,6 +517,7 @@ function Start-GameDownload($game) {
     $script:InstallGame=$game
     $script:InstallProcess=Start-Process powershell.exe -ArgumentList ('-NoProfile -ExecutionPolicy Bypass -File '+(ConvertTo-WindowsArgument (Join-Path $PSScriptRoot 'InstallWorker.ps1'))+' -Request '+(ConvertTo-WindowsArgument $requestFile)) -WindowStyle Hidden -PassThru
     $script:ActiveInstall=$jobDir;$cancelButton.Visibility='Visible'
+    $script:InstallStartedUtc=[DateTime]::UtcNow;$script:InstallLastBytes=0;$script:InstallLastSampleUtc=$script:InstallStartedUtc;$script:InstallSpeedBps=0
     $OperationProgress.Visibility='Visible'
     Set-Status 'Preparando download...'
     Update-PlayLabel
@@ -551,21 +558,68 @@ function Show-QueueSummaryIfNeeded {
     return $true
 }
 $script:QueueRemoveHandler={param($sender,$e)
-    $id=[string]$sender.Tag;$title=$id
-    foreach($item in $script:DownloadQueue){if($item.id -ceq $id){$title=$item.title}}
-    if(Remove-DownloadQueueItem $script:DownloadQueue $id){Set-Status ('Removido da fila: '+$title)}
+    try{
+        $id=[string]$sender.Tag;$title=$id
+        foreach($item in @($script:DownloadQueue)){if($item.id -ceq $id){$title=$item.title}}
+        if(Remove-DownloadQueueItem $script:DownloadQueue $id){Set-Status ('Removido da fila: '+$title)}
+    }catch{Write-LauncherLog 'queue.remove' $_.Exception.ToString();Set-Status ('Nao foi possivel remover da fila: '+$_.Exception.Message) $true}
 }
-$script:QueueClearHandler={param($sender,$e) $script:DownloadQueue.Clear();Set-Status 'Fila de downloads limpa.'}
+$script:QueueClearHandler={param($sender,$e) try{$script:DownloadQueue.Clear();Set-Status 'Fila de downloads limpa.'}catch{Write-LauncherLog 'queue.clear' $_.Exception.ToString();Set-Status ('Nao foi possivel limpar a fila: '+$_.Exception.Message) $true}}
 function Show-DownloadQueue {
     if($script:DownloadQueue.Count -eq 0){Set-Status 'A fila de downloads esta vazia.';return}
-    $actions=@()
-    foreach($item in @($script:DownloadQueue)){
-        $remove=New-Object Windows.Controls.Button;$remove.Tag=[string]$item.id;$remove.Add_Click($script:QueueRemoveHandler)
-        $actions+=@{label=('Remover da fila: '+$item.title);source=$remove;enabled=$true}
+    try{
+        $actions=@()
+        foreach($item in @($script:DownloadQueue)){
+            $remove=New-Object Windows.Controls.Button;$remove.Tag=[string]$item.id;$remove.Add_Click($script:QueueRemoveHandler)
+            $actions+=@{label=('Remover da fila: '+$item.title);source=$remove;enabled=$true}
+        }
+        $clear=New-Object Windows.Controls.Button;$clear.Add_Click($script:QueueClearHandler)
+        $actions+=@{label='Limpar a fila inteira';source=$clear;enabled=$true}
+        $total=$script:DownloadQueue.Count+$(if($script:ActiveInstall){1}else{0})
+        Show-LauncherActionList ('Fila de downloads ('+$total+'); '+$script:DownloadQueue.Count+' aguardando') $actions
+    }catch{Write-LauncherLog 'queue.open' $_.Exception.ToString();Set-Status ('Nao foi possivel abrir a fila: '+$_.Exception.Message) $true}
+}
+function Get-InstalledUpdateCandidates {
+    $candidates=@()
+    foreach($game in @($script:Catalog)){
+        try{
+            if(-not $game.PSObject.Properties['managedRoot']){continue}
+            $root=Get-GameRoot $game
+            if(-not [IO.File]::Exists((Resolve-CatalogPath $root $game.executable))){continue}
+            $available=[string]$game.availableVersion
+            if([string]::IsNullOrWhiteSpace($available)){continue}
+            $installed=[string]$game.version
+            if([string]::IsNullOrWhiteSpace($installed) -or (Compare-LauncherVersions $installed $available) -lt 0){$candidates+=,$game}
+        }catch{Write-LauncherLog 'updates.scan' $_.Exception.ToString()}
     }
-    $clear=New-Object Windows.Controls.Button;$clear.Add_Click($script:QueueClearHandler)
-    $actions+=@{label='Limpar a fila inteira';source=$clear;enabled=$true}
-    Show-LauncherActionList ('Fila de downloads ('+$script:DownloadQueue.Count+')') $actions
+    return $candidates
+}
+function Start-InstalledGamesUpdate([object[]]$GamesToUpdate) {
+    $items=@($GamesToUpdate);if($items.Count -eq 0){Set-Status 'Nenhum jogo instalado com atualizacao confirmada.';return}
+    $added=0;$skipped=0;$activeId=if($script:InstallGame){[string]$script:InstallGame.id}else{''}
+    foreach($game in $items){
+        try{
+            [void](Get-DownloadRequestInfo $game)
+            $result=Add-DownloadQueueItem $script:DownloadQueue ([string]$game.id) ([string]$game.title) $activeId
+            if($result -eq 'added'){$added++;$script:QueueUsed=$true}
+            elseif($result -eq 'active'){[void]$script:QueueResults.Add('Ignorado: '+$game.title+' (ja esta em andamento)');$skipped++}
+            elseif($result -eq 'queued'){$skipped++}
+        }catch{[void]$script:QueueResults.Add('Falhou: '+$game.title+' ('+$_.Exception.Message+')')}
+    }
+    if($added -eq 0){Set-Status 'Nenhuma nova atualizacao foi adicionada; veja o relatorio ou a fila.' $true;return}
+    if(-not $script:ActiveInstall){[void](Start-NextQueuedDownload)}
+    Set-Status ($added.ToString()+' jogo(s) adicionado(s) a atualizacao em lote; '+$skipped.ToString()+' ignorado(s).')
+}
+function Show-InstalledGamesUpdate {
+    try{
+        $candidates=@(Get-InstalledUpdateCandidates)
+        if($candidates.Count -eq 0){Set-Status 'Nenhum jogo instalado com versao mais nova confirmada no acervo.';return}
+        $actions=@();$all=New-Object Windows.Controls.Button
+        $all.Add_Click({Start-InstalledGamesUpdate $candidates}.GetNewClosure())
+        $actions+=@{label=('Atualizar todos os '+$candidates.Count+' jogos');source=$all;enabled=$true}
+        foreach($game in $candidates){$one=New-Object Windows.Controls.Button;$one.Add_Click({Start-InstalledGamesUpdate @($game)}.GetNewClosure());$actions+=@{label=('Atualizar: '+$game.title+' ('+$game.version+' -> '+$game.availableVersion+')');source=$one;enabled=$true}}
+        Show-LauncherActionList 'Atualizar jogos instalados' $actions
+    }catch{Write-LauncherLog 'updates.open' $_.Exception.ToString();Set-Status ('Nao foi possivel abrir atualizacoes: '+$_.Exception.Message) $true}
 }
 $UpdateButton.Add_Click({ try { Open-DownloadSource } catch { Set-Status $_.Exception.Message $true } })
 $Games.Add_SelectionChanged({
@@ -713,7 +767,13 @@ $installTimer.Add_Tick({
         if($null -eq $result){return}
         $bytes=0; $downloadPath=Join-Path $script:ActiveInstall 'downloads'
         if(Test-Path -LiteralPath $downloadPath){$bytes=Get-CatalogFilesSize @(Get-ChildItem -LiteralPath $downloadPath -File)}
-        Set-Status ($result.message+$(if($bytes){' | '+[Math]::Round($bytes/1MB,1)+' MB recebidos'}else{''})+$(if($script:DownloadQueue.Count){' | Fila: '+$script:DownloadQueue.Count+' aguardando'}else{''})) ($result.state -eq 'error')
+        $now=[DateTime]::UtcNow;$elapsed=if($script:InstallStartedUtc){$now-$script:InstallStartedUtc}else{[TimeSpan]::Zero}
+        if($script:InstallLastSampleUtc -and $now -gt $script:InstallLastSampleUtc -and $bytes -ge $script:InstallLastBytes){$sampleSeconds=($now-$script:InstallLastSampleUtc).TotalSeconds;if($sampleSeconds -gt 0){$script:InstallSpeedBps=($bytes-$script:InstallLastBytes)/$sampleSeconds}}
+        $script:InstallLastBytes=$bytes;$script:InstallLastSampleUtc=$now
+        $progressText=$result.message+$(if($bytes){' | '+[Math]::Round($bytes/1MB,1)+' MB recebidos'}else{''})+$(if($elapsed.TotalSeconds -gt 0){' | Tempo: '+$elapsed.ToString('hh\:mm\:ss')}else{''})+$(if($script:InstallSpeedBps -gt 0){' | Velocidade: '+[Math]::Round($script:InstallSpeedBps/1KB,0)+' KB/s'}else{''})
+        if($result.PSObject.Properties['totalBytes'] -and [double]$result.totalBytes -gt $bytes -and $script:InstallSpeedBps -gt 0){$remaining=([double]$result.totalBytes-$bytes)/$script:InstallSpeedBps;$progressText+=' | Restante: '+([TimeSpan]::FromSeconds($remaining).ToString('hh\:mm\:ss'))}
+        $progressText+=$(if($script:DownloadQueue.Count){' | Fila: '+$script:DownloadQueue.Count+' aguardando'}else{''})
+        Set-Status $progressText ($result.state -eq 'error')
         if($result.state -eq 'error'){
             $failedTitle=if($script:InstallGame){$script:InstallGame.title}else{[string]$result.id}
             $shortReason=[string]$result.message;if($shortReason.Length -gt 160){$shortReason=$shortReason.Substring(0,160)+'...'}

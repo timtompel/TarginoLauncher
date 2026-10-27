@@ -51,6 +51,13 @@ function Invoke-Tdl($exe,$arguments,[int]$TimeoutSeconds=14400) {
         throw ('O relogio do Windows esta fora de hora e o Telegram recusou a conexao. Em Configuracoes do Windows > Hora e idioma, ative "Definir horario automaticamente", confira o fuso de Brasilia e clique em "Sincronizar agora". Depois tente baixar novamente. (Detalhe tecnico: '+$inner+')')
     }
 }
+function Resolve-InstallVersionInfo($Metadata,[string]$Link,[string]$MessageId) {
+    try{return (Get-ArquivistaMessageVersion $Metadata $Link)}
+    catch{
+        if($_.Exception.Message -notmatch '(?i)nao informou a versao|sem versao|versao identificavel'){throw}
+        return [pscustomobject]@{version='nao informada';author='';messageId=$MessageId;source='arquivista-message-sem-versao'}
+    }
+}
 function Assert-NoInstallLinks([string]$Path){
     $cursor=[IO.Path]::GetFullPath($Path)
     while($cursor){
@@ -87,12 +94,11 @@ try {
     Report 'running' 'Consultando somente o post do jogo no Telegram...'
     [void](Invoke-Tdl $req.tdl (Get-ArquivistaMetadataArguments $req.link $storage $metaFile) 45)
     $meta=Read-CentralJson $metaFile
-    $versionInfo=Get-ArquivistaMessageVersion $meta $req.link
+    $versionInfo=Resolve-InstallVersionInfo $meta $req.link ([string]$mid)
     $version=$versionInfo.version;$author=$versionInfo.author
-    if(-not $version){throw 'A mensagem nao informou uma versao identificavel. Nenhum jogo foi alterado.'}
     # Atualizacoes tambem baixam o pacote: a mesma versao pode conter novos mods.
     $downloads=Join-Path $jobDir 'downloads'; New-Item -ItemType Directory -Path $downloads -Force|Out-Null
-    Report 'running' ("Baixando versao $version...")
+    Report 'running' ("Baixando pacote"+$(if($version -eq 'nao informada'){' (versao nao confirmada)...'}else{" versao $version..."}))
     [void](Invoke-Tdl $req.tdl @('--storage',$storage,'--reconnect-timeout','2m','-l','1','-t','2','dl','--group','--continue','--skip-same','--template','{{ filenamify .FileName }}','-d',$downloads,'-u',$req.link))
     $archives=@(Get-ChildItem -LiteralPath $downloads -File | Where-Object {$_.Name -match '\.rar$' -and $_.Name -notmatch '\.part(?!0*1\.)\d+\.rar$'})
     if($archives.Count -ne 1){throw 'Esperado um pacote RAR (ou primeira parte). Os arquivos foram mantidos para revisao.'}

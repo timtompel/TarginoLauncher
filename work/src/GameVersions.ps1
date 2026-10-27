@@ -1,4 +1,4 @@
-﻿function Get-ArquivistaMessageVersion($Metadata,[string]$Link) {
+function Get-ArquivistaMessageVersion($Metadata,[string]$Link) {
     $uri=$null
     if(-not [Uri]::TryCreate($Link,[UriKind]::Absolute,[ref]$uri) -or $uri.Scheme -ne 'https' -or $uri.Host -ne 't.me'){throw 'Fonte de versao invalida.'}
     $parts=$uri.AbsolutePath.Trim('/').Split('/')
@@ -8,7 +8,7 @@
     if($messages.Count -ne 1){throw 'O post exato do jogo nao foi encontrado uma unica vez. Versao nao confirmada.'}
     $text=Get-OptionalCatalogText $messages[0] 'text'
     if(-not $text){$text=Get-OptionalCatalogText $messages[0] 'message'}
-    if($text -notmatch '(?im)^\s*Vers[ãa]o\s*:?\s*\r?\n\s*([^\r\n]+)'){throw 'O post exato do jogo nao informou a versao.'}
+    if($text -notmatch '(?im)^\s*Vers.{1,2}o\s*:?\s*\r?\n\s*([^\r\n]+)'){throw 'O post exato do jogo nao informou a versao.'}
     $line=($Matches[1] -replace '\s+',' ').Trim();$author='';$version=$line
     if($line -match '^(.*)\s[-–—]\s(.+)$'){$author=$Matches[1].Trim();$version=$Matches[2].Trim()}
     [pscustomobject]@{version=$version;author=$author;messageId=$target;source='arquivista-message'}
@@ -32,6 +32,16 @@ function Get-ArquivistaMetadataArguments([string]$Link,[string]$Storage,[string]
     $post=Get-ArquivistaPostReference $Link
     # Um unico limite em tdl -T id consulta ate o fim do historico.
     @('--storage',$Storage,'--reconnect-timeout','15s','chat','export','-c',$post.chat,'-T','id','-i',($post.lower.ToString()+','+$post.upper.ToString()),'--all','--with-content','-o',$Output)
+}
+
+function Compare-LauncherVersions([string]$Left,[string]$Right) {
+    if([string]::IsNullOrWhiteSpace($Left) -or [string]::IsNullOrWhiteSpace($Right)){return $null}
+    $l=($Left.Trim() -replace '^[vV]','' -replace '[-+].*$','')
+    $r=($Right.Trim() -replace '^[vV]','' -replace '[-+].*$','')
+    $la=@([regex]::Matches($l,'\d+')|ForEach-Object {[int]$_.Value});$ra=@([regex]::Matches($r,'\d+')|ForEach-Object {[int]$_.Value})
+    $count=[Math]::Max($la.Count,$ra.Count)
+    for($i=0;$i -lt $count;$i++){ $a=if($i -lt $la.Count){$la[$i]}else{0};$b=if($i -lt $ra.Count){$ra[$i]}else{0};if($a -ne $b){return [Math]::Sign($a-$b)} }
+    return 0
 }
 
 function Read-ArquivistaAcervoVersions([string]$Root) {

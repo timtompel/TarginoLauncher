@@ -38,4 +38,7 @@ Save 'Arquivismo\Cache\verificacao_jogos.json' @{Quando='20/10/2026 10:00';Jogos
 $acervo=Read-ArquivistaAcervoVersions $fixture
 Assert ($acervo.teste.version -eq '0.0.6' -and $acervo.outro.version -eq '') 'Conferencia mais nova/erro nao respeitada.'
 Assert ((Read-CentralJson (Join-Path $fixture 'Dados\instalados.json')).teste.version -eq '0.0.5-alpha') 'Acervo sobrescreveu versao instalada.'
+Assert ((Compare-LauncherVersions '0.0.5' '0.0.6') -lt 0) 'Comparacao de versoes crescentes falhou.'
+Assert ((Compare-LauncherVersions 'v1.2.0-beta' '1.1.9') -gt 0) 'Comparacao de versoes com previa falhou.'
+Assert ((Compare-LauncherVersions '1.0' '1.0.0') -eq 0) 'Zeros finais deveriam ser equivalentes.'
 Write-Output 'PASS: ID exato, mensagem ausente/duplicada, reparo com backup idempotente, acervo mais novo e separacao entre instalada/disponivel.'

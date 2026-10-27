@@ -14,4 +14,10 @@ $bad.executable = '..\fora.exe'
 $out = Test-CatalogGame $bad $root
 if ($out.Valid) { throw 'Caminho fora da raiz foi aceito' }
 
+$report=Get-CatalogValidationReport @(
+    [pscustomobject]@{id='a';title='A';executable='jogo.exe';downloadLink='https://t.me/c/1/2'},
+    [pscustomobject]@{id='a';title='A duplicado';executable='';downloadLink='invalido'}
+) $root
+if($report.valid -or $report.errors.Count -lt 2 -or $report.warnings.Count -lt 1){throw 'Relatorio de integridade do catalogo incompleto.'}
+
 Write-Output 'Catalog.Tests: PASS'

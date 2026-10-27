@@ -1,6 +1,34 @@
-﻿Set-StrictMode -Version Latest
+Set-StrictMode -Version Latest
 
 $script:JsonRecoveredFromBackup=$null
+
+function Write-LauncherLog {
+    param([Parameter(Mandatory)][string]$Area,[Parameter(Mandatory)][string]$Message)
+    try {
+        $appRootVar=Get-Variable -Scope Script -Name AppRoot -ErrorAction SilentlyContinue
+        $root=if($appRootVar){[string]$appRootVar.Value}else{Split-Path $PSScriptRoot -Parent}
+        $dir=Join-Path $root 'Dados';New-Item -ItemType Directory -Force -Path $dir|Out-Null
+        $safe=$Message -replace '(?i)(token|auth_key|phone|password|session|secret)\s*[:=]\s*\S+','$1=[oculto]'
+        $line=('{0:u} [{1}] {2}' -f [DateTime]::UtcNow,$Area,$safe)
+        $path=Join-Path $dir 'launcher.log';Add-Content -LiteralPath $path -Value $line -Encoding UTF8
+        if((Get-Item -LiteralPath $path).Length -gt 2097152){
+            $tail=[IO.File]::ReadAllLines($path);$keep=$tail|Select-Object -Last 2000;[IO.File]::WriteAllLines($path,$keep,[Text.UTF8Encoding]::new($false))
+        }
+    } catch {}
+}
+
+function Get-CatalogValidationReport([object[]]$Catalog,[string]$Root) {
+    $errors=New-Object 'Collections.Generic.List[string]';$warnings=New-Object 'Collections.Generic.List[string]';$seen=@{}
+    foreach($game in @($Catalog)){
+        $id=[string]$game.id;$title=[string]$game.title
+        if([string]::IsNullOrWhiteSpace($id)){[void]$errors.Add('Jogo sem identificador.');continue}
+        if($seen.ContainsKey($id)){[void]$errors.Add('ID duplicado: '+$id)}else{$seen[$id]=$true}
+        if([string]::IsNullOrWhiteSpace($title)){[void]$warnings.Add('Jogo '+$id+' sem titulo.')}
+        if([string]::IsNullOrWhiteSpace([string]$game.executable)){[void]$warnings.Add($id+' sem executavel.')}
+        if($game.PSObject.Properties['downloadLink'] -and $game.downloadLink){$uri=$null;if(-not [Uri]::TryCreate([string]$game.downloadLink,[UriKind]::Absolute,[ref]$uri)){[void]$errors.Add($id+' com link invalido.')}}
+    }
+    [pscustomobject]@{valid=($errors.Count -eq 0);errors=@($errors);warnings=@($warnings);count=@($Catalog).Count}
+}
 
 # Um unico lugar para montar argumentos de linha de comando do Windows.
 # Aspas e barras finais (ex.: raiz de unidade 'D:\') quebravam a concatenacao manual.

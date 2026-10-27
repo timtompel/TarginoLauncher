@@ -1,6 +1,8 @@
 $ErrorActionPreference='Stop'
 $tokens=$null;$errors=$null
 $worker=Join-Path $PSScriptRoot '..\src\InstallWorker.ps1'
+. (Join-Path $PSScriptRoot '..\src\Catalog.ps1')
+. (Join-Path $PSScriptRoot '..\src\GameVersions.ps1')
 $ast=[Management.Automation.Language.Parser]::ParseFile($worker,[ref]$tokens,[ref]$errors)
 if($errors.Count){throw 'Sintaxe invalida no worker'}
 $function=$ast.Find({param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Run-Tool'},$true)
@@ -29,4 +31,9 @@ $tdlFail=Join-Path $jobDir 'fail\tdl.exe';New-Item -ItemType Directory -Path (Sp
 Add-Type -TypeDefinition $alwaysSource -OutputAssembly $tdlFail -OutputType ConsoleApplication
 $friendly='';try{[void](Invoke-Tdl $tdlFail @('dl'))}catch{$friendly=$_.Exception.Message}
 if($friendly -notmatch 'relogio do Windows esta fora de hora' -or $friendly -notmatch 'Sincronizar agora'){throw 'Mensagem de relogio fora de hora ausente ou pouco clara.'}
+$function3=$ast.Find({param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Resolve-InstallVersionInfo'},$true)
+if(-not $function3){throw 'Resolve-InstallVersionInfo ausente no worker.'}
+Invoke-Expression $function3.Extent.Text
+$fallback=Resolve-InstallVersionInfo ([pscustomobject]@{messages=@([pscustomobject]@{id=705;text='Sem versao cadastrada'})}) 'https://t.me/Canal/686/705' '705'
+if($fallback.version -ne 'nao informada' -or $fallback.source -notmatch 'sem-versao'){throw 'Post sem versao deveria permitir instalacao com aviso.'}
 'PASS: erro 9 do descompactador preserva causa e nao acusa autenticacao; detalhes sensiveis ocultados; erro de relogio do Telegram tenta NTP e orienta o usuario.'
